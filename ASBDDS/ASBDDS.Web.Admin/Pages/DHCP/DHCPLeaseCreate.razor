@@ -1,0 +1,42 @@
+﻿@using ASBDDS.Shared.Models.Responses
+@inject IHttpService _httpClient
+
+<MudDialog DisableSidePadding="true">
+    <DialogContent>
+        <MudContainer xs="12" Class="mx-auto px-4 justify-center my-4 mud-text-align-center" Style="max-height: 700px; width: 400px; overflow-y: scroll">
+            <MudItem xs="12">
+                <MudTextField Class="my-2" @bind-Value="@MacAddress" Label="Mac Address" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+                <MudTextField Class="my-2" @bind-Value="@IpAddress" Label="IP Address" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            </MudItem>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Create">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+<SnackBars @ref="_snackBars"></SnackBars>
+@code {
+
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    private string MacAddress { get; set; }
+    private string IpAddress { get; set; }
+    
+    private SnackBars _snackBars;
+
+    void Cancel() => MudDialog.Cancel();
+
+    private async void Create()
+    {
+        var apiResp = await _httpClient.Put<ApiResponse<DeviceRentUserResponse>>("api/admin/dhcp/leases/" + MacAddress + "/make-static?ip=" + IpAddress, null);
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            if (apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+            MudDialog.Close(DialogResult.Ok(true));
+    }
+}
