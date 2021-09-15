@@ -24,9 +24,9 @@ namespace ASBDDS.NET
         {
             Configuration = configuration;
             var dnetIpStr = Configuration.GetValue<string>("Networks:Devices:IP");
-
-            TftpServer = new TFTPServer(dnetIpStr, 69);
+            
             DhcpServer = DHCPServerHelper.Create(configuration);
+            TftpServer = new TFTPServer(dnetIpStr, 69, DhcpServer);
         }
 
         public IConfiguration Configuration { get; }

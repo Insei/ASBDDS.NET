@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
+using ASBDDS.API.Servers.DHCP;
 using Tftp.Net;
 
 namespace ASBDDS.API.Servers.TFTP
@@ -12,11 +14,14 @@ namespace ASBDDS.API.Servers.TFTP
     public class TFTPServer
     {
         public string TftpDirectory { get; }
-        private TftpServer server { get; set; }
-        public TFTPServer(string ip, int port = 69)
+        private readonly TftpServer _tftp;
+        private DHCPServer _dhcp;
+
+        public TFTPServer(string ip, int port = 69, DHCPServer dhcp = null)
         {
             var ipAddr = IPAddress.Parse(ip);
-            server = new TftpServer(ipAddr, port);
+            _tftp = new TftpServer(ipAddr, port);
+            _dhcp = dhcp;
             TftpDirectory = BootloaderSetupHelper.TftpDirectory;
             CreateTftpRootPath();
         }
@@ -34,9 +39,9 @@ namespace ASBDDS.API.Servers.TFTP
 
         public void Start()
         {
-            server.OnWriteRequest += new TftpServerEventHandler(OnWriteRequest);
-            server.OnReadRequest += new TftpServerEventHandler(OnReadRequest);
-            server.Start();
+            _tftp.OnWriteRequest += OnWriteRequest;
+            _tftp.OnReadRequest += OnReadRequest;
+            _tftp.Start();
         }
 
         private void CancelTransfer(ITftpTransfer transfer, TftpErrorPacket reason)
@@ -51,8 +56,17 @@ namespace ASBDDS.API.Servers.TFTP
 
         private void OnReadRequest(ITftpTransfer transfer, EndPoint client)
         {
-            string path = Path.Combine(TftpDirectory, transfer.Filename);
-            FileInfo file = new FileInfo(path);
+            // For now we save bootloaders files to mac address folder in tftp directory, and switch bootloaders in this directory if this needed.
+            var ipEndPointClient = client as IPEndPoint;
+            var macAddress = _dhcp?.Leases.FirstOrDefault(l => l.Address.Equals(ipEndPointClient?.Address))?.MacAddress;
+            if (string.IsNullOrEmpty(macAddress))
+            {
+                CancelTransfer(transfer, TftpErrorPacket.FileNotFound);
+                return;
+            }
+
+            var path = Path.Combine(TftpDirectory, macAddress, transfer.Filename);
+            var file = new FileInfo(path);
 
             //Is the file within the server directory?
             if (!file.FullName.StartsWith(Environment.CurrentDirectory, StringComparison.InvariantCultureIgnoreCase))
@@ -65,10 +79,8 @@ namespace ASBDDS.API.Servers.TFTP
             }
             else
             {
-                using (var stream = new FileStream(file.FullName, FileMode.Open))
-                {
-                    StartTransfer(transfer, stream);
-                }
+                var stream = new FileStream(file.FullName, FileMode.Open);
+                StartTransfer(transfer, stream);
             }
         }
 
@@ -79,7 +91,5 @@ namespace ASBDDS.API.Servers.TFTP
             //transfer.OnFinished += new TftpEventHandler(transfer_OnFinished);
             transfer.Start(stream);
         }
-
-        
     }
 }
