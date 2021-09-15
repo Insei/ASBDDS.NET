@@ -7,8 +7,8 @@ namespace ASBDDS.API.Models.Utils
 {
     public static class BootloaderSetupHelper
     {
-        public static string TftpDirectory = Path.Combine(Environment.CurrentDirectory, "tftp_root");
-        public static string ImagesDirectory = Path.Combine(Environment.CurrentDirectory, "images");
+        public static readonly string TftpDirectory = Path.Combine(Environment.CurrentDirectory, "tftp_root");
+        public static readonly string ImagesDirectory = Path.Combine(Environment.CurrentDirectory, "images");
 
         private static void CopyAll(DirectoryInfo source, DirectoryInfo target)
         {
@@ -32,7 +32,7 @@ namespace ASBDDS.API.Models.Utils
         {
             var deviceHelper = new DeviceHelper();
             var firmwarePath = Path.Combine(ImagesDirectory, deviceHelper.GetSystemBaseModel(device.Model), "firmware");
-            var outPath = Path.Combine(TftpDirectory, device.Serial);
+            var outPath = Path.Combine(TftpDirectory, device.MacAddress);
             CopyAll(new DirectoryInfo(firmwarePath), new DirectoryInfo(outPath));
         }
 
@@ -40,13 +40,32 @@ namespace ASBDDS.API.Models.Utils
         {
             var deviceHelper = new DeviceHelper();
             var ubootPath = Path.Combine(ImagesDirectory, deviceHelper.GetSystemBaseModel(device.Model), "u-boot", variant);
-            var outPath = Path.Combine(TftpDirectory, device.Serial);
+            var outPath = Path.Combine(TftpDirectory, device.MacAddress);
             CopyAll(new DirectoryInfo(ubootPath), new DirectoryInfo(outPath));
         }
 
+        public static void MakeIpxe(Device device, string ipxeUrl)
+        {
+            var ipxePath = Path.Combine(ImagesDirectory, "ipxe");
+            var outPath = Path.Combine(TftpDirectory, device.MacAddress);
+            CopyAll(new DirectoryInfo(ipxePath), new DirectoryInfo(outPath));
+            var ixpeStr = "";
+            using (var reader = File.OpenText(Path.Combine(outPath , "ipxe.efi.cfg")))
+            {
+                ixpeStr = reader.ReadToEnd();
+            }
+            ixpeStr = ixpeStr.Replace("REPLACEURL", ipxeUrl);            
+          
+            using (var file = new StreamWriter(Path.Combine(outPath , "ipxe.efi.cfg")))
+            {
+                file.Write(ixpeStr);
+            }
+        }
+        
+
         public static void RemoveDeviceDirectory(Device device)
         {
-            Directory.Delete(Path.Combine(TftpDirectory, device.Serial), true);
+            Directory.Delete(Path.Combine(TftpDirectory, device.MacAddress), true);
         }
     }
 }
