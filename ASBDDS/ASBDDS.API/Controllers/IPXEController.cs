@@ -9,8 +9,8 @@ using ASBDDS.API.Models.Utils;
 using ASBDDS.Shared.Models.Database.DataDb;
 using Microsoft.EntityFrameworkCore;
 using ASBDDS.Shared.Helpers;
-using ASBDDS.API.Interfaces;
 using ASBDDS.API.Models;
+using ASBDDS.Shared.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 
 namespace ASBDDS.API.Controllers

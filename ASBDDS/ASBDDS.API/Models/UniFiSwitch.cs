@@ -1,9 +1,9 @@
-﻿using ASBDDS.API.Interfaces;
-using ASBDDS.Shared.Models.Database.DataDb;
+﻿using ASBDDS.Shared.Models.Database.DataDb;
 using Renci.SshNet;
 using System;
 using System.IO;
 using System.Threading;
+using ASBDDS.Shared.Interfaces;
 
 namespace ASBDDS.API.Models
 {
@@ -45,16 +45,13 @@ namespace ASBDDS.API.Models
         {
             if (port.Switch.AuthMethod == SwitchAuthMethod.SSH_USER_PASS)
             {
-                ConnectionInfo ConnNfo = new ConnectionInfo(port.Switch.Ip, 22, port.Switch.Username,
+                var ConnNfo = new ConnectionInfo(port.Switch.Ip, 22, port.Switch.Username,
                     new AuthenticationMethod[]{
-                        // Pasword based Authentication
                         new PasswordAuthenticationMethod(port.Switch.Username, port.Switch.Password),
                     }
                 );
-                using (var client = new SshClient(ConnNfo))
-                {
-                    SetupPoePortOpmode(client, port, UniFiSwitchPOEPortOpmode.AUTO);
-                }
+                using var client = new SshClient(ConnNfo);
+                SetupPoePortOpmode(client, port, UniFiSwitchPOEPortOpmode.AUTO);
             }
             else
                 throw new NotImplementedException("AuthMethod is not implemented");
@@ -66,7 +63,6 @@ namespace ASBDDS.API.Models
             {
                 using (var client = new SshClient(port.Switch.Ip, port.Switch.Username, port.Switch.Password))
                 {
-
                     SetupPoePortOpmode(client, port, UniFiSwitchPOEPortOpmode.SHUTDOWN);
                 }
             }
