@@ -88,20 +88,19 @@ namespace ASBDDS.Web.Client.Services
                 if (isRefreshOk)
                 {
                     return await SendRequest<T>(request);
-                } 
-                else
-                {
-
                 }
+                await _authenticationService.Logout();
+                return default;
             }
 
             using var response = await _httpClient.SendAsync(request);
 
             // auto logout on 401 response
-            //if (response.StatusCode == HttpStatusCode.Unauthorized)
-            //{
-            //    return default;
-            //}
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                await _authenticationService.Logout();
+                return default;
+            }
 
             var respStr = await response.Content.ReadAsStringAsync();
             // throw exception on error response
