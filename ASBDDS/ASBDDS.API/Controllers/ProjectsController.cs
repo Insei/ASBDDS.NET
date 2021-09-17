@@ -311,7 +311,7 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<ProjectUserResponse>();
             try
             {
-                var user = await _userManager.FindByNameAsync(HttpContext.User.Identity.Name);
+                var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(HttpContext.User.Identity.Name));
                 var project = new Project()
                 {
                     Name = projectReq.Name,
