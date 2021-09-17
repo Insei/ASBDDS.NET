@@ -5,13 +5,24 @@ namespace ASBDDS.API.Models
 {
     public class AuthOptions
     {
-        public const string ISSUER = "ASBDDS API"; // издатель токена
-        public const string AUDIENCE = "ASBDDS CLIENT"; // потребитель токена
-        const string KEY = "MySuperSecretCegthFdnjvfnb223";   // ключ для шифрации
-        public const int LIFETIME = 60; // время жизни токена - 60 минут
-        public static SymmetricSecurityKey GetSymmetricSecurityKey()
+        public AuthOptions(string issuer, string audience, string key, int lifetimeMinutes)
         {
-            return new SymmetricSecurityKey(Encoding.ASCII.GetBytes(KEY));
+            Issuer = issuer;
+            Audience = audience;
+            Lifetime = lifetimeMinutes;
+            Key = key;
+        }
+
+        public AuthOptions() { }
+
+        public string Issuer { get; set; }
+        public string Audience { get; set; }
+        public string Key { get; set; }
+        public int Lifetime { get; set; }
+        
+        public SymmetricSecurityKey GetSymmetricSecurityKey()
+        {
+            return new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Key));
         }
     }
 }

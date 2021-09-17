@@ -23,8 +23,10 @@ namespace ASBDDS.NET
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
+            AuthOptions = Configuration.GetSection("API:Auth").Get<AuthOptions>();
+
             var dnetIpStr = Configuration.GetValue<string>("Networks:Devices:IP");
-            
+
             DhcpServer = DHCPServerHelper.Create(configuration);
             TftpServer = new TFTPServer(dnetIpStr, 69, DhcpServer);
         }
@@ -32,6 +34,7 @@ namespace ASBDDS.NET
         public IConfiguration Configuration { get; }
         private TFTPServer TftpServer { get; }
         private DHCPServer DhcpServer { get; }
+        private AuthOptions AuthOptions { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -43,6 +46,7 @@ namespace ASBDDS.NET
                 .AddEntityFrameworkStores<DataDbContext>();
             services.AddSingleton(_ => TftpServer);
             services.AddSingleton(_ => DhcpServer);
+            services.AddSingleton(_ => AuthOptions);
             services.AddScoped<DevicePowerControlManager>();
             services.AddAuthentication(option =>  
                 {  
@@ -56,10 +60,10 @@ namespace ASBDDS.NET
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
-                        ValidIssuer = AuthOptions.ISSUER,
+                        ValidIssuer = AuthOptions.Issuer,
  
                         ValidateAudience = true,
-                        ValidAudience = AuthOptions.AUDIENCE,
+                        ValidAudience = AuthOptions.Audience,
                         ValidateLifetime = true,
 
                         IssuerSigningKey = AuthOptions.GetSymmetricSecurityKey(),
