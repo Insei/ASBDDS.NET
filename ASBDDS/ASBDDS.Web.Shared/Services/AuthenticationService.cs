@@ -47,10 +47,10 @@ namespace ASBDDS.Web.Client.Services
             var expiredToken = await _localStorageService.GetItemAsync<TokenResponse>("TokenResponse");
 
 
-            if (expiredToken == null || expiredToken.RefreshToken == null || expiredToken.AccessToken == null)
+            if (expiredToken?.RefreshToken == null || expiredToken.AccessToken == null)
             {
                 await ResetTokenDataAsync();
-                (_authenticationStateProvider as ApiAuthenticationStateProvider).Notify();
+                (_authenticationStateProvider as ApiAuthenticationStateProvider)?.Notify();
                 return success;
             }
             
@@ -71,13 +71,13 @@ namespace ASBDDS.Web.Client.Services
                 await _localStorageService.RemoveItemAsync("TokenResponse");
                 TokenResponse = tokenRefreshResponse.Data;
                 await _localStorageService.SetItemAsync("TokenResponse", TokenResponse);
-                (_authenticationStateProvider as ApiAuthenticationStateProvider).Notify();
+                (_authenticationStateProvider as ApiAuthenticationStateProvider)?.Notify();
                 success = true;
             } 
             else
             {
                 await _localStorageService.SetItemAsync<TokenResponse>("TokenResponse", null);
-                (_authenticationStateProvider as ApiAuthenticationStateProvider).Notify();
+                (_authenticationStateProvider as ApiAuthenticationStateProvider)?.Notify();
             }
 
             return success;
@@ -98,14 +98,13 @@ namespace ASBDDS.Web.Client.Services
                 TokenResponse = tokenResponse.Data;
             }
             await _localStorageService.SetItemAsync("TokenResponse", TokenResponse);
-            (_authenticationStateProvider as ApiAuthenticationStateProvider).Notify();
+            (_authenticationStateProvider as ApiAuthenticationStateProvider)?.Notify();
         }
 
         public async Task Logout()
         {
-            TokenResponse = null;
-            await _localStorageService.RemoveItemAsync("TokenResponse");
-            (_authenticationStateProvider as ApiAuthenticationStateProvider).Notify();
+            await ResetTokenDataAsync();
+            (_authenticationStateProvider as ApiAuthenticationStateProvider)?.Notify();
         }
     }
 }
