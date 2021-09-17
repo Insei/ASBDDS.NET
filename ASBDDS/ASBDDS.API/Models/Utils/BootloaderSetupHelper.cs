@@ -44,22 +44,11 @@ namespace ASBDDS.API.Models.Utils
             CopyAll(new DirectoryInfo(ubootPath), new DirectoryInfo(outPath));
         }
 
-        public static void MakeIpxe(Device device, string ipxeUrl)
+        public static void MakeIpxe(Device device)
         {
             var ipxePath = Path.Combine(ImagesDirectory, "ipxe");
             var outPath = Path.Combine(TftpDirectory, device.MacAddress);
             CopyAll(new DirectoryInfo(ipxePath), new DirectoryInfo(outPath));
-            var ixpeStr = "";
-            using (var reader = File.OpenText(Path.Combine(outPath , "ipxe.efi.cfg")))
-            {
-                ixpeStr = reader.ReadToEnd();
-            }
-            ixpeStr = ixpeStr.Replace("REPLACEURL", ipxeUrl);            
-          
-            using (var file = new StreamWriter(Path.Combine(outPath , "ipxe.efi.cfg")))
-            {
-                file.Write(ixpeStr);
-            }
         }
         
 

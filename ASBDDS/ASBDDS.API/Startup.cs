@@ -43,10 +43,11 @@ namespace ASBDDS.NET
                 .AddEntityFrameworkStores<DataDbContext>();
             services.AddSingleton(_ => TftpServer);
             services.AddSingleton(_ => DhcpServer);
+            services.AddScoped<DevicePowerControlManager>();
             services.AddAuthentication(option =>  
                 {  
-                    option.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;  
-                    option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;  
+                    option.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
   
                 })
                 .AddJwtBearer(options =>

@@ -42,7 +42,20 @@
             <MudItem xs="12">
                 <MudTextField Class="my-2" @bind-Value="@_deviceAdminPostRequest.MacAddress" Label="Mac Address" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
-            <MudSelect Class="my-2" @bind-Value="@_deviceAdminPostRequest.SwitchPortId" Label="Port type" Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelect Class="my-2" @bind-Value="_deviceAdminPostRequest.PowerControlType" Label="Power control type" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @{
+                    if (_deviceAdminPostRequest.Manufacturer != "")
+                    {
+                        var deviceHelper = new DeviceHelper();
+                        var models = deviceHelper.GetModels(_deviceAdminPostRequest.Manufacturer);
+                        foreach (DevicePowerControlType type in Enum.GetValues(typeof(DevicePowerControlType)))
+                        {
+                            <MudSelectItem Value="@type">@type</MudSelectItem>
+                        }
+                    }
+                }
+            </MudSelect>
+            <MudSelect Class="my-2" @bind-Value="@_deviceAdminPostRequest.SwitchPortId" Label="Port" Variant="Variant.Outlined" Margin="Margin.Dense">
                 @foreach (var _switch in switches)
                 {
                     foreach (var port in _switch.Ports)

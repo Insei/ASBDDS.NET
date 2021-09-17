@@ -33,6 +33,10 @@ namespace ASBDDS.Shared.Models.Requests
         /// Switch port ID
         /// </summary>
         public Guid? SwitchPortId { get; set; }
+        /// <summary>
+        /// Power control type
+        /// </summary>
+        public DevicePowerControlType PowerControlType { get; set; }
         public DeviceAdminPutRequest() { }
     }
 }

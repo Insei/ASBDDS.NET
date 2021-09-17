@@ -102,11 +102,10 @@ namespace ASBDDS.API.Controllers
                     resp.Status.Message = "Switch not found";
                     return resp;
                 }
+                
 
-                var switchHelper = new SwitchHelper();
-
-                var model = switchHelper.GetModel(switchReq.Model);
-                var manufacturer = switchHelper.GetManufacturer(switchReq.Manufacturer);
+                var model = SwitchHelper.GetModel(switchReq.Model);
+                var manufacturer = SwitchHelper.GetManufacturer(switchReq.Manufacturer);
                 if (model == null || manufacturer == null)
                 {
                     resp.Status.Code = 1;
@@ -188,10 +187,8 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<SwitchAdminResponse>();
             try
             {
-                var switchHelper = new SwitchHelper();
-
-                var model = switchHelper.GetModel(switchReq.Model);
-                var manufacturer = switchHelper.GetManufacturer(switchReq.Manufacturer);
+                var model = SwitchHelper.GetModel(switchReq.Model);
+                var manufacturer = SwitchHelper.GetManufacturer(switchReq.Manufacturer);
                 if (model == null || manufacturer == null)
                 {
                     resp.Status.Code = 1;

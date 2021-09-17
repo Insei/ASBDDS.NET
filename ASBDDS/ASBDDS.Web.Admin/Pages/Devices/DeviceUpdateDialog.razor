@@ -3,6 +3,8 @@
 @using ASBDDS.Shared.Helpers
 @using Newtonsoft.Json
 @using System.Text
+@using ASBDDS.Shared.Models.Database.DataDb
+@using Microsoft.AspNetCore.Components
 @inject IHttpService httpClient
 
 <MudDialog DisableSidePadding="true">
@@ -40,6 +42,19 @@
             <MudItem xs="12">
                 <MudTextField Class="my-2" @bind-Value="@_deviceAdminPutRequest.MacAddress" Label="Mac Address" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
+            <MudSelect Class="my-2" @bind-Value="_deviceAdminPutRequest.PowerControlType" Label="Power control type" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            @{
+                                if (_deviceAdminPutRequest.Manufacturer != "")
+                                {
+                                    var deviceHelper = new DeviceHelper();
+                                    var models = deviceHelper.GetModels(_deviceAdminPutRequest.Manufacturer);
+                                    foreach (DevicePowerControlType type in Enum.GetValues(typeof(DevicePowerControlType)))
+                                    {
+                                        <MudSelectItem Value="@type">@type</MudSelectItem>
+                                    }
+                                }
+                            }
+                        </MudSelect>
             <MudSelect Class="my-2" @bind-Text="@selectedSwitchPortName" @bind-Value="@_deviceAdminPutRequest.SwitchPortId" Label="Port type" Variant="Variant.Outlined" Margin="Margin.Dense">
                 @foreach (var _switch in switches)
                 {
@@ -85,6 +100,7 @@
         _deviceAdminPutRequest.Serial = _device.Serial;
         _deviceAdminPutRequest.MacAddress = _device.MacAddress;
         _deviceAdminPutRequest.SwitchPortId = _device.SwitchPortId;
+        _deviceAdminPutRequest.PowerControlType = _device.PowerControlType;
 
         var responseBody = await httpClient.Get<ApiResponse<List<SwitchAdminResponse>>>("api/admin/switches/");
         switches = responseBody.Data;

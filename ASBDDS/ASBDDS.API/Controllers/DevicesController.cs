@@ -19,10 +19,12 @@ namespace ASBDDS.API.Controllers
     public class DevicesController : ControllerBase
     {
         private readonly DataDbContext _context;
+        private readonly DevicePowerControlManager _devicePowerControl;
 
-        public DevicesController(DataDbContext context)
+        public DevicesController(DataDbContext context, DevicePowerControlManager devicePowerControl)
         {
             _context = context;
+            _devicePowerControl = devicePowerControl;
         }
 
         #region Admin panel API
@@ -122,8 +124,9 @@ namespace ASBDDS.API.Controllers
                 device.Model = deviceReq.Model;
                 device.Name = deviceReq.Name;
                 device.Serial = deviceReq.Serial;
+                device.PowerControlType = deviceReq.PowerControlType;
                 device.SwitchPort = switchPort;
-
+                
                 _context.Entry(device).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 resp.Data = new DeviceAdminResponse(device);
@@ -168,7 +171,8 @@ namespace ASBDDS.API.Controllers
                     SwitchPort = _switchPort,
                     MacAddress = deviceReq.MacAddress,
                     Model = deviceReq.Model,
-                    Name = deviceReq.Name
+                    Name = deviceReq.Name,
+                    PowerControlType = deviceReq.PowerControlType
                 };
                 _context.Devices.Add(device);
                 await _context.SaveChangesAsync();
@@ -257,7 +261,7 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<DeviceAdminResponse>();
             try
             {
-                var device = await _context.Devices.Where(d => d.Id == id).Include(d => d.SwitchPort).ThenInclude(s => s.Switch).FirstOrDefaultAsync();
+                var device = await _context.Devices.Where(d => d.Id == id).Include(d => d.SwitchPort).FirstOrDefaultAsync();
                 if (device == null)
                 {
                     resp.Status.Code = 1;
@@ -265,7 +269,7 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
 
-                DeviceSwitchPower(device, enable);
+                await _devicePowerControl.SwitchPower(device, enable);
 
                 if (enable)
                     device.StateEnum = DeviceState.POWERON;
@@ -286,167 +290,6 @@ namespace ASBDDS.API.Controllers
             return resp;
         }
 
-        private void DeviceSwitchPower(Device device, bool enable)
-        {
-            if (device?.SwitchPort?.Switch != null)
-            {
-                var unifiSwitch = new UniFiSwitch();
-                if (enable)
-                    unifiSwitch.EnablePOEPort(device.SwitchPort);
-                else
-                    unifiSwitch.DisablePOEPort(device.SwitchPort);
-            }
-        }
-
         #endregion
-
-        //#region User panel API
-        //// GET: api/Devices
-        //[HttpGet("api/devices/")]
-        //public async Task<ActionResult<ApiResponse<List<DeviceUserResponse>>>> GetUserDevices(Guid projectId)
-        //{
-        //    var resp = new ApiResponse<List<DeviceUserResponse>>();
-        //    try
-        //    {
-        //        var devices = await _context.Devices.Where(d => d.ExternalId != null && d.Project != null && d.Project.Id == projectId)
-        //            .Include(d => d.SwitchPort).ToArrayAsync();
-        //        var _devices = new List<DeviceUserResponse>();
-        //        foreach (Device device in devices)
-        //        {
-        //            _devices.Add(new DeviceUserResponse(device));
-        //        }
-        //        resp.Data = _devices;
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        resp.Status.Code = 1;
-        //        resp.Status.Message = e.Message;
-        //    }
-        //    return resp;
-        //}
-
-        //// GET: api/Devices/5
-        //[HttpGet("api/devices/{id}")]
-        //public async Task<ActionResult<ApiResponse<DeviceUserResponse>>> GetUserDevice(Guid id, Guid projectId)
-        //{
-        //    var resp = new ApiResponse<DeviceUserResponse>();
-        //    try
-        //    {
-        //        var device = await _context.Devices.Where(d => d.ExternalId != null && d.ExternalId == id && d.Project != null && d.Project.Id == projectId)
-        //            .Include(d => d.SwitchPort).FirstOrDefaultAsync();
-        //        if (device == null)
-        //        {
-        //            resp.Status.Code = 1;
-        //            resp.Status.Message = "Device not found";
-        //            return resp;
-        //        }
-
-        //        resp.Data = new DeviceUserResponse(device);
-                
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        resp.Status.Code = 1;
-        //        resp.Status.Message = e.Message;
-        //    }
-        //    return resp;
-        //}
-
-        //[HttpPut("api/devices/{id}")]
-        //public async Task<ActionResult<ApiResponse<DeviceUserResponse>>> PutDevice(Guid id, DeviceUserPutRequest @deviceReq)
-        //{
-        //    var resp = new ApiResponse<DeviceUserResponse>();
-        //    try
-        //    {
-        //        var device = await _context.Devices.Where(d => d.ExternalId != null && d.ExternalId == id).FirstOrDefaultAsync();
-        //        device.Name = deviceReq.Name;
-
-        //        _context.Entry(device).State = EntityState.Modified;
-        //        await _context.SaveChangesAsync();
-        //        resp.Data = new DeviceUserResponse(device);
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        resp.Status.Code = 1;
-        //        resp.Status.Message = e.Message;
-        //    }
-        //    return resp;
-        //}
-
-        //// POST: api/Devices
-        //// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        //[HttpPost("api/devices/")]
-        //public async Task<ActionResult<ApiResponse<DeviceUserResponse>>> PostUserDevice(DeviceUserPostRequest @deviceReq, Guid projectId)
-        //{
-        //    var resp = new ApiResponse<DeviceUserResponse>();
-        //    try
-        //    {
-        //        var project = await _context.Projects.FindAsync(projectId);
-        //        if(project == null)
-        //        {
-        //            resp.Status.Code = 1;
-        //            resp.Status.Message = "Project not found";
-        //            return resp;
-        //        }
-        //        var device = await _context.Devices.Where(d => d.ExternalId == null && d.Model == deviceReq.Model).FirstOrDefaultAsync();
-        //        if(device == null)
-        //        {
-        //            resp.Status.Code = 1;
-        //            resp.Status.Message = "There are no available devices with the specified model";
-        //            return resp;
-        //        }
-  
-        //        device.ExternalId = new Guid();
-        //        device.Name = deviceReq.Name;
-        //        device.Project = project;
-        //        device.StateEnum = DeviceState.CREATING;
-        //        await _context.SaveChangesAsync();
-        //        resp.Data = new DeviceUserResponse(device);
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        resp.Status.Code = 1;
-        //        resp.Status.Message = e.Message;
-        //    }
-        //    return resp;
-        //}
-
-        //// DELETE: api/Devices/5
-        //[HttpDelete("api/devices/{id}")]
-        //public async Task<ActionResult<ApiResponse<DeviceUserResponse>>> DeleteUserDevice(Guid id, Guid projectId)
-        //{
-        //    var resp = new ApiResponse<DeviceUserResponse>();
-        //    try
-        //    {
-        //        var project = await _context.Projects.FindAsync(projectId);
-        //        if (project == null)
-        //        {
-        //            resp.Status.Code = 1;
-        //            resp.Status.Message = "Project not found";
-        //            return resp;
-        //        }
-
-        //        var device = await _context.Devices.FindAsync(id);
-        //        if (device == null)
-        //        {
-        //            resp.Status.Code = 1;
-        //            resp.Status.Message = "Device not found";
-        //            return resp;
-        //        }
-
-        //        device.StateEnum = DeviceState.ERASING;
-        //        await _context.SaveChangesAsync();
-        //        resp.Data = new DeviceUserResponse(device);
-                
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        resp.Status.Code = 1;
-        //        resp.Status.Message = e.Message;
-        //    }
-
-        //    return resp;
-        //}
-        //#endregion
     }
 }

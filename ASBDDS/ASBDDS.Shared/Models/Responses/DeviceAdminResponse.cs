@@ -39,7 +39,10 @@ namespace ASBDDS.Shared.Models.Responses
         /// Device state
         /// </summary>
         public string State { get; set; }
-
+        /// <summary>
+        /// Power control type
+        /// </summary>
+        public DevicePowerControlType PowerControlType { get; set; }
         public DeviceAdminResponse(Device _device)
         {
             Id = _device.Id;
@@ -50,6 +53,7 @@ namespace ASBDDS.Shared.Models.Responses
             MacAddress = _device.MacAddress;
             SwitchPortId = _device.SwitchPort.Id;
             State = _device.StateEnum.ToString().ToLower();
+            PowerControlType = _device.PowerControlType;
         }
 
         public DeviceAdminResponse() { }

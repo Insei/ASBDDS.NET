@@ -1,80 +1,139 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.IO;
-using ASBDDS.API.Models.Utils;
+using System.Text;
 using ASBDDS.Shared.Models.Database.DataDb;
 using Microsoft.EntityFrameworkCore;
-using ASBDDS.Shared.Helpers;
 using ASBDDS.API.Models;
-using ASBDDS.Shared.Interfaces;
-using Microsoft.AspNetCore.Authorization;
+using ASBDDS.API.Models.Utils;
+using GitHub.JPMikkers.DHCP;
 
 namespace ASBDDS.API.Controllers
 {
-    [Route("api/ipxe")]
+    [Route("api/ipxe/")]
     [ApiController]
-    [Authorize]
     public class IPXEController : ControllerBase
     {
         private readonly DataDbContext _context;
-        public IPXEController(DataDbContext context)
+        private readonly DevicePowerControlManager _devicePowerControl;
+        public IPXEController(DataDbContext context, DevicePowerControlManager devicePowerControl)
         {
             _context = context;
+            _devicePowerControl = devicePowerControl;
         }
-        /// <summary>
-        /// Get IPXE configuration file
-        /// </summary>
-        /// <param name="serial">Device serial number</param>
-        /// <returns></returns>
-        [HttpGet("{serial}/ipxe.efi.cfg")]
-        public async Task<FileResult> GetIPXEConfig(string serial)
+
+        private static readonly string ipxeCfgReboot = 
+            "#!ipxe\n"+
+            "reboot";
+
+        private static readonly string ipxeCfgNormal = 
+            "#!ipxe\n" +
+            "echo Getting the current time from ntp...\n" +
+            ":retry_ntp\n" +
+            "ntp pool.ntp.org || goto retry_ntp\n" +
+            "chain --autofree REPLACEURL";
+        private static readonly string ipxeCfgPowerOff = 
+            "#!ipxe\n" +
+            "poweroff";
+        
+        private async Task<Stream> OnEraseComplete(Device device)
         {
-            string path = Path.Combine(BootloaderSetupHelper.ImagesDirectory, "ipxe", "reboot-ipxe.efi.cfg");
-            var shortserial = serial.Substring(8, 8);
-            var device = _context.Devices.Where(d => d.Serial == serial || d.Serial == shortserial).Include(d => d.SwitchPort).ThenInclude(s => s.Switch).FirstOrDefault();
-            if (device != null)
+            // Disable POE on port
+            await _devicePowerControl.SwitchPower(device, false);
+            
+            var deviceRent = _context.DeviceRents.FirstOrDefault(dr => dr.Device.Id == device.Id && dr.Status == DeviceRentStatus.CLOSING);
+            if (deviceRent != null)
             {
-                if (device.StateEnum == DeviceState.CREATING)
-                {
-                    path = Path.Combine(BootloaderSetupHelper.TftpDirectory, device.Serial, "ipxe.efi.cfg");
-                    device.StateEnum = DeviceState.PROVISIONING;
-                }
-                else if (device.StateEnum == DeviceState.PROVISIONING)
-                {
-                    BootloaderSetupHelper.MakeFirmware(device);
-                    BootloaderSetupHelper.MakeUboot(device);
-                    device.StateEnum = DeviceState.POWERON;
-                }
-                else if (device.StateEnum == DeviceState.ERASING)
-                {
-                    var @switch = device.SwitchPort.Switch;
-                    var switchHelper = new SwitchHelper();
-                    IControlPOESwitchPort poeControl = null;
-
-                    if (switchHelper.GetManufacturer(@switch.Manufacturer) == SwitchManufacturers.UBIQUITI)
-                    {
-                        poeControl = new UniFiSwitch();
-                    }
-                    // TODO: ERROR HANDLER
-                    if (poeControl != null)
-                        poeControl.DisablePOEPort(device.SwitchPort);
-
-                    BootloaderSetupHelper.RemoveDeviceDirectory(device);
-                    device.StateEnum = DeviceState.POWEROFF;
-                }
-                else
-                {
-                    //TODO: ERROR HANDLER
-                }
-                _context.Entry(device).State = EntityState.Modified;
-                await _context.SaveChangesAsync();
+                deviceRent.Status = DeviceRentStatus.CLOSED;
+                deviceRent.Closed = DateTime.Now;
+                _context.Entry(deviceRent).State = EntityState.Modified;
             }
 
-            return File(new FileStream(path, FileMode.Open), "application/octet-stream", "ipxe.efi.cfg");
+            device.StateEnum = DeviceState.POWEROFF;
+            _context.Entry(device).State = EntityState.Modified;
+            
+            await _context.SaveChangesAsync();
+            BootloaderSetupHelper.RemoveDeviceDirectory(device);
+            
+            return new MemoryStream(Encoding.UTF8.GetBytes(ipxeCfgPowerOff));
+        }
+
+        private async Task<Stream> OnProvisionComplete(Device device)
+        {
+            
+            device.StateEnum = DeviceState.POWERON;
+            
+            BootloaderSetupHelper.RemoveDeviceDirectory(device);
+            BootloaderSetupHelper.MakeFirmware(device);
+            BootloaderSetupHelper.MakeUboot(device, "normal");
+            
+            _context.Entry(device).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            
+            return new MemoryStream(Encoding.UTF8.GetBytes(ipxeCfgReboot));
+        }
+
+        private async Task<Stream> GetUserIpxeCfgStream(Device device)
+        {
+            Stream ipxeConfigStream = null;
+            var deviceRent = _context.DeviceRents.FirstOrDefault(dr => dr.DeviceId == device.Id && dr.Status == DeviceRentStatus.ACTIVE);
+            if (deviceRent != null)
+            {
+                ipxeConfigStream = new MemoryStream(Encoding.UTF8.GetBytes(ipxeCfgNormal.Replace("REPLACEURL", deviceRent.IpxeUrl)));
+            }
+
+            return ipxeConfigStream;
+        }
+        
+        private async Task<Stream> OnCreateComplete(Device device)
+        {
+            device.StateEnum = DeviceState.PROVISIONING;
+            _context.Entry(device).State = EntityState.Modified;
+            
+            await _context.SaveChangesAsync();
+            
+            return await GetUserIpxeCfgStream(device);
+        }
+
+        [HttpGet("{macAddress}/ipxe.efi.cfg")]
+        public async Task<FileResult> GetIPXEConfig(string macAddress)
+        {
+            var macBytes = Utils.HexStringToBytes(macAddress);
+            var macString = Utils.BytesToHexString(macBytes, "-");
+
+            var device = _context.Devices
+                .FirstOrDefault(d => d.MacAddress.Equals(macString));
+            
+            Stream ipxeConfigStream = null;
+            if (device != null)
+            {
+                switch (device.StateEnum)
+                {
+                    case DeviceState.CREATING:
+                        ipxeConfigStream = await OnCreateComplete(device);
+                        break;
+                    case DeviceState.PROVISIONING:
+                        ipxeConfigStream = await OnProvisionComplete(device);
+                        break;
+                    case DeviceState.POWERON:
+                        ipxeConfigStream = await GetUserIpxeCfgStream(device);
+                        break;
+                    case DeviceState.POWEROFF:
+                        ipxeConfigStream = await GetUserIpxeCfgStream(device);
+                        break;
+                    case DeviceState.ERASING:
+                        // power off device
+                        ipxeConfigStream = await OnEraseComplete(device);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            ipxeConfigStream ??= new MemoryStream(Encoding.UTF8.GetBytes(ipxeCfgReboot));
+            var fileStream =  File(ipxeConfigStream, "application/octet-stream", "ipxe.efi.cfg");
+            return fileStream;
         }
     }
 }

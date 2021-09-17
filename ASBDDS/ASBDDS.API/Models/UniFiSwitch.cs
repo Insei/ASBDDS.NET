@@ -3,6 +3,7 @@ using Renci.SshNet;
 using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using ASBDDS.Shared.Interfaces;
 
 namespace ASBDDS.API.Models
@@ -14,7 +15,7 @@ namespace ASBDDS.API.Models
         AUTO
     }
 
-    public class UniFiSwitch : IControlPOESwitchPort
+    public class UniFiSwitch : IDevicePowerControl
     {
         private void SendSshCommand(SshClient client, string commandsStr)
         {
@@ -36,38 +37,39 @@ namespace ASBDDS.API.Models
             client.Disconnect();
         }
 
-        private void SetupPoePortOpmode(SshClient client, SwitchPort port, UniFiSwitchPOEPortOpmode opmode)
+        private int SetupPoePortOpmode(SshClient client, SwitchPort port, UniFiSwitchPOEPortOpmode opmode)
         {
             SendSshCommand(client, "telnet localhost; enable; config; interface " + port.Number + "; poe opmode " + opmode.ToString().ToLower() + "; exit; exit; exit; exit; exit;");
+            return 0;
         }
 
-        public void EnablePOEPort(SwitchPort port)
+        public async Task<int> PowerOn(Device device, CancellationToken cancellationToken = default)
         {
+            var port = device.SwitchPort;
             if (port.Switch.AuthMethod == SwitchAuthMethod.SSH_USER_PASS)
             {
-                var ConnNfo = new ConnectionInfo(port.Switch.Ip, 22, port.Switch.Username,
+                var connInfo = new ConnectionInfo(port.Switch.Ip, 22, port.Switch.Username,
                     new AuthenticationMethod[]{
                         new PasswordAuthenticationMethod(port.Switch.Username, port.Switch.Password),
                     }
                 );
-                using var client = new SshClient(ConnNfo);
-                SetupPoePortOpmode(client, port, UniFiSwitchPOEPortOpmode.AUTO);
+                using var client = new SshClient(connInfo);
+                return await Task.Run(() => SetupPoePortOpmode(client, port, UniFiSwitchPOEPortOpmode.AUTO), cancellationToken);
             }
-            else
-                throw new NotImplementedException("AuthMethod is not implemented");
+            throw new NotImplementedException("AuthMethod is not implemented");
         }
 
-        public void DisablePOEPort(SwitchPort port)
+        public async Task<int> PowerOff(Device device, CancellationToken cancellationToken = default)
         {
+            var port = device.SwitchPort;
             if (port.Switch.AuthMethod == SwitchAuthMethod.SSH_USER_PASS)
             {
                 using (var client = new SshClient(port.Switch.Ip, port.Switch.Username, port.Switch.Password))
                 {
-                    SetupPoePortOpmode(client, port, UniFiSwitchPOEPortOpmode.SHUTDOWN);
+                    return await Task.Run(() => SetupPoePortOpmode(client, port, UniFiSwitchPOEPortOpmode.SHUTDOWN), cancellationToken);
                 }
             }
-            else
-                throw new NotImplementedException("AuthMethod is not implemented");
+            throw new NotImplementedException("AuthMethod is not implemented");
         }
     }
 }

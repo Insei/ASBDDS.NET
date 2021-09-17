@@ -30,50 +30,48 @@ namespace ASBDDS.Shared.Helpers
         }
     }
 
-    public class SwitchHelper
+    public static class SwitchHelper
     {
-        private SwitchManufacturer ubiquiti = new SwitchManufacturer(SwitchManufacturers.UBIQUITI, "Ubiquiti");
-        private List<SwitchModel> switchModels { get; }
-        public SwitchHelper()
+        private static SwitchManufacturer ubiquiti = new SwitchManufacturer(SwitchManufacturers.UBIQUITI, "Ubiquiti");
+        private static List<SwitchModel> switchModels = new List<SwitchModel>()
         {
-            switchModels = new List<SwitchModel>();
-            switchModels.Add(new SwitchModel(ubiquiti, SwitchModels.UNIFI_SWITCH_US_24_250W, "UniFi Switch US-24-250W"));
-        }
+            new SwitchModel(ubiquiti, SwitchModels.UNIFI_SWITCH_US_24_250W, "UniFi Switch US-24-250W"),
+        };
 
-        public SwitchManufacturers? GetManufacturer(SwitchModels model)
+        public static SwitchManufacturers? GetManufacturer(SwitchModels model)
         {
             return switchModels.FirstOrDefault(m => m.Enum == model)?.Manufacturer.Enum;
         }
 
-        public SwitchManufacturers? GetManufacturer(string manufacturerName)
+        public static SwitchManufacturers? GetManufacturer(string manufacturerName)
         {
             return switchModels.FirstOrDefault(m => m.Manufacturer.Name == manufacturerName)?.Manufacturer.Enum;
         }
 
-        public string GetManufacturer(SwitchManufacturers manufacturer)
+        public static string GetManufacturer(SwitchManufacturers manufacturer)
         {
             return switchModels.FirstOrDefault(m => m.Manufacturer.Enum == manufacturer)?.Manufacturer.Name;
         }
 
-        public SwitchModels[] GetModels(SwitchManufacturers manufacturer)
+        public static SwitchModels[] GetModels(SwitchManufacturers manufacturer)
         {
             return switchModels.Where(m => m.Manufacturer.Enum == manufacturer).Select(m => m.Enum).ToArray();
         }
-        public SwitchModels[] GetModels(string manufacturerName)
+        public static SwitchModels[] GetModels(string manufacturerName)
         {
             return switchModels.Where(m => m.Manufacturer.Name == manufacturerName).Select(m => m.Enum).ToArray();
         }
 
-        public SwitchModels? GetModel(string name)
+        public static SwitchModels? GetModel(string name)
         {
             return switchModels.FirstOrDefault(m => m.Name == name)?.Enum;
         }
 
-        public string GetModel(SwitchModels model)
+        public static string GetModel(SwitchModels model)
         {
             return switchModels.FirstOrDefault(m => m.Enum == model)?.Name;
         }
-        public SwitchManufacturers[] GetManufacturers()
+        public static SwitchManufacturers[] GetManufacturers()
         {
             return switchModels.Select(m => m.Manufacturer.Enum).Distinct().ToArray();
         }

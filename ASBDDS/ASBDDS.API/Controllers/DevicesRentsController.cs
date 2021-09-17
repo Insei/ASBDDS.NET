@@ -8,9 +8,12 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
+using ASBDDS.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Primitives;
 using ASBDDS.API.Models.Utils;
+using ASBDDS.Shared.Helpers;
+using ASBDDS.Shared.Interfaces;
 using Microsoft.AspNetCore.Identity;
 
 namespace ASBDDS.API.Controllers
@@ -22,9 +25,11 @@ namespace ASBDDS.API.Controllers
     public class DevicesRentsController : ControllerBase
     {
         private readonly DataDbContext _context;
-        public DevicesRentsController(DataDbContext context)
+        private readonly DevicePowerControlManager _devicePowerControl;
+        public DevicesRentsController(DataDbContext context, DevicePowerControlManager devicePowerControl)
         {
             _context = context;
+            _devicePowerControl = devicePowerControl;
         }
 
         /// <summary>
@@ -32,7 +37,7 @@ namespace ASBDDS.API.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<List<DeviceRentUserResponse>>>> GetUserDevicesRents([FromHeader(Name="ProjectId")][Required] Guid projectId)
+        public async Task<ApiResponse<List<DeviceRentUserResponse>>> GetUserDevicesRents([FromHeader(Name="ProjectId")][Required] Guid projectId)
         {
             var resp = new ApiResponse<List<DeviceRentUserResponse>>();
             try
@@ -72,7 +77,7 @@ namespace ASBDDS.API.Controllers
         /// <param name="projectId">project id</param>
         /// <returns></returns>
         [HttpGet("{id}")]
-        public async Task<ActionResult<ApiResponse<DeviceRentUserResponse>>> GetUserDeviceRent([FromHeader(Name="ProjectId")][Required] Guid projectId, Guid id)
+        public async Task<ApiResponse<DeviceRentUserResponse>> GetUserDeviceRent([FromHeader(Name="ProjectId")][Required] Guid projectId, Guid id)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
             try
@@ -109,7 +114,7 @@ namespace ASBDDS.API.Controllers
         /// <param name="projectId">Project id</param>
         /// <returns></returns>
         [HttpPut("{id}")]
-        public async Task<ActionResult<ApiResponse<DeviceRentUserResponse>>> UpdateUserDeviceRent(Guid id, DeviceRentUserPutRequest devRentReq,
+        public async Task<ApiResponse<DeviceRentUserResponse>> UpdateUserDeviceRent(Guid id, DeviceRentUserPutRequest devRentReq,
                                                                                         [FromHeader(Name="ProjectId")][Required] Guid projectId)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
@@ -152,7 +157,7 @@ namespace ASBDDS.API.Controllers
         /// <param name="projectId">Project id</param>
         /// <returns></returns>
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<DeviceRentUserResponse>>> CreateUserDeviceRent([FromHeader(Name="ProjectId")][Required] Guid projectId, 
+        public async Task<ApiResponse<DeviceRentUserResponse>> CreateUserDeviceRent([FromHeader(Name="ProjectId")][Required] Guid projectId, 
                                                                                                         DeviceRentUserPostRequest devRentReq)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
@@ -166,11 +171,11 @@ namespace ASBDDS.API.Controllers
                     resp.Status.Message = "Project not found";
                     return resp;
                 }
-                var devicesIdinRents = await _context.DeviceRents.Where(r => r.Closed == null).Select(r => r.Device.Id).ToListAsync();
+                var devicesIdInRents = await _context.DeviceRents.Where(r => r.Closed == null).Select(r => r.Device.Id).ToListAsync();
                 var freeDevice = await _context.Devices
-                    .Where(d => !devicesIdinRents.Contains(d.Id) && d.Manufacturer == devRentReq.Manufacturer && d.Model == devRentReq.Model)
-                    .FirstOrDefaultAsync();
-
+                    .FirstOrDefaultAsync(d => !devicesIdInRents.Contains(d.Id) && d.Manufacturer == devRentReq.Manufacturer && d.Model == devRentReq.Model);
+                // TODO: advanced reasons if device can't be available for this request.
+                // example: we have not device with selected model in pool. 
                 if (freeDevice == null)
                 {
                     resp.Status.Code = 1;
@@ -186,7 +191,16 @@ namespace ASBDDS.API.Controllers
                     IpxeUrl = devRentReq.IPXEUrl,
                     Creator = user
                 };
+                
+                // Setup bootloaders in TFTP folder
+                BootloaderSetupHelper.MakeFirmware(deviceRent.Device);
+                BootloaderSetupHelper.MakeUboot(deviceRent.Device, "provisioning");
+                BootloaderSetupHelper.MakeIpxe(deviceRent.Device);
+                deviceRent.Device.StateEnum = DeviceState.CREATING;
 
+                // Enable POE on port
+                await _devicePowerControl.SwitchPower(deviceRent.Device, true);
+                
                 _context.DeviceRents.Add(deviceRent);
                 await _context.SaveChangesAsync();
 
@@ -207,7 +221,7 @@ namespace ASBDDS.API.Controllers
         /// <param name="projectId">Project id</param>
         /// <returns></returns>
         [HttpDelete("{id}")]
-        public async Task<ActionResult<ApiResponse<DeviceRentUserResponse>>> DeleteUserDeviceRent([FromHeader(Name="ProjectId")][Required] Guid projectId, 
+        public async Task<ApiResponse<DeviceRentUserResponse>> CloseUserDeviceRent([FromHeader(Name="ProjectId")][Required] Guid projectId, 
                                                                                                         Guid id)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
@@ -220,7 +234,7 @@ namespace ASBDDS.API.Controllers
                     resp.Status.Message = "Project not found";
                     return resp;
                 }
-                var deviceRent = await _context.DeviceRents.Where(r => r.Id == id && r.Closed == null && r.Project == project).Include(r => r.Project).Include(r => r.Device).FirstOrDefaultAsync();
+                var deviceRent = await _context.DeviceRents.Include(dr => dr.Device).FirstOrDefaultAsync(r => r.Id == id && r.Closed == null && r.Project == project);
                 if (deviceRent == null)
                 {
                     resp.Status.Code = 1;
@@ -228,9 +242,23 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
 
-                deviceRent.Closed = DateTime.Now;
+                deviceRent.Status = DeviceRentStatus.CLOSING;
+                
+                BootloaderSetupHelper.RemoveDeviceDirectory(deviceRent.Device);
+                BootloaderSetupHelper.MakeFirmware(deviceRent.Device);
+                BootloaderSetupHelper.MakeUboot(deviceRent.Device, "erase-sdcard");
+                BootloaderSetupHelper.MakeIpxe(deviceRent.Device);
+                
+                // Reboot device via POE on port
+                var device = deviceRent.Device;
+                await _devicePowerControl.SwitchPower(device, false);
+                await _devicePowerControl.SwitchPower(device, true);
+                
+                device.StateEnum = DeviceState.ERASING;
+                
+                _context.Entry(device).State = EntityState.Modified;
+                _context.Entry(deviceRent).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-
                 resp.Data = new DeviceRentUserResponse(deviceRent);
             }
             catch (Exception e)

@@ -14,10 +14,9 @@
             </MudItem>
             <MudSelect Class="my-2" @bind-Value="@_switchAdminPutRequest.Manufacturer" Label="Manufacturer" Variant="Variant.Outlined" Margin="Margin.Dense">
                 @{
-                    var switchHelper = new SwitchHelper();
-                    foreach (var manufacturer in switchHelper.GetManufacturers())
+                    foreach (var manufacturer in SwitchHelper.GetManufacturers())
                     {
-                        <MudSelectItem Value="@switchHelper.GetManufacturer(manufacturer)"></MudSelectItem>
+                        <MudSelectItem Value="@SwitchHelper.GetManufacturer(manufacturer)"></MudSelectItem>
                     }
                 }
             </MudSelect>
@@ -25,11 +24,10 @@
                 @{
                     if (_switchAdminPutRequest.Manufacturer != "")
                     {
-                        var switchHelper = new SwitchHelper();
-                        var models = switchHelper.GetModels(_switchAdminPutRequest.Manufacturer);
+                        var models = SwitchHelper.GetModels(_switchAdminPutRequest.Manufacturer);
                         foreach (var model in models)
                         {
-                            var modelName = switchHelper.GetModel(model);
+                            var modelName = SwitchHelper.GetModel(model);
                             <MudSelectItem Value="@modelName"></MudSelectItem>
                         }
                     }
