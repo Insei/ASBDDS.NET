@@ -1,9 +1,11 @@
 ﻿@inherits LayoutComponentBase
 @using ASBDDS.Shared.Models.Responses
 @using Blazored.LocalStorage
-@inject IAuthenticationService AuthenticationService
+@using System.Threading
+@inject IAuthenticationService _authenticationService
 @inject ILocalStorageService _localStorageService
 @inject IHttpService _httpClient
+@inject AuthenticationStateProvider _authenticationStateProvider
 <MudLayout>
     <MudThemeProvider />
     <MudDialogProvider />
@@ -14,14 +16,19 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
                 <MudText Typo="Typo.h5" Class="ml-3">ASBDDS Web</MudText>
                 <MudSpacer />
-                <MudSelect Style="background: #fff;" Class="my-2" @bind-Value="@_projectGuidChangeHandler" @bind-Text="@_selectedProjectName" Variant="Variant.Outlined" Margin="Margin.Dense">
-                    @{
-                        foreach (var project in _projectUserResponses)
-                        {
-                            <MudSelectItem Value="@project.Id">@project.Name</MudSelectItem>
-                        }
+                @{
+                    if (_projectsUserResponse != null)
+                    {
+                        <MudSelect Style="background: #fff;" Class="my-2" @bind-Value="@_projectGuidChangeHandler" @bind-Text="@_selectedProjectName" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            @{
+                                foreach (var project in _projectsUserResponse)
+                                {
+                                    <MudSelectItem Value="@project.Id">@project.Name</MudSelectItem>
+                                }
+                            }
+                        </MudSelect>
                     }
-                </MudSelect>
+                }
                 <MudIconButton OnClick="Logout" Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Edge="Edge.End" />
             </MudAppBar>
             <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
@@ -41,7 +48,8 @@
 
 @code {
     bool _drawerOpen = true;
-    private IEnumerable<ProjectUserResponse> _projectUserResponses = new List<ProjectUserResponse>();
+    private IEnumerable<ProjectUserResponse> _projectsUserResponse;
+    private Timer _timer;
     private ProjectUserResponse _currentProject = new ProjectUserResponse();
     private string _selectedProjectName { get; set; }
     private Guid _projectGuidChangeHandler
@@ -57,6 +65,14 @@
         }
     }
 
+    private async void CheckProjects(object state)
+    {
+        if (!await (_authenticationStateProvider as ApiAuthenticationStateProvider)?.TokenIsExpired())
+        {
+            await TryGetProjects();
+            _timer.Dispose();
+        }
+    }
 
     void DrawerToggle()
     {
@@ -65,23 +81,23 @@
 
     private async void Logout()
     {
-        await AuthenticationService.Logout();
+        await _authenticationService.Logout();
     }
 
-    protected override async Task OnInitializedAsync()
+    private async Task TryGetProjects()
     {
         var apiResp = await _httpClient.Get<ApiResponse<List<ProjectUserResponse>>>("api/projects/");
         if (apiResp != null && apiResp.Status.Code == 0)
         {
-            _projectUserResponses = apiResp.Data;
+            _projectsUserResponse = apiResp.Data;
             _currentProject = await _localStorageService.GetItemAsync<ProjectUserResponse>("CurrentProject");
-            if (_currentProject == null || _projectUserResponses.All(p => p.Id != _currentProject.Id))
+            if (_currentProject == null || _projectsUserResponse.All(p => p.Id != _currentProject.Id))
             {
-                var project = _projectUserResponses.FirstOrDefault();
+                var project = _projectsUserResponse.FirstOrDefault();
                 if (project != null)
                 {
                     _currentProject = new ProjectUserResponse() {Id = project.Id, Name = project.Name};
-                    await _localStorageService.SetItemAsync<ProjectUserResponse>("CurrentProject", _currentProject);
+                    await _localStorageService.SetItemAsync("CurrentProject", _currentProject);
                     StateHasChanged();
                 }
             }
@@ -90,20 +106,33 @@
                 StateHasChanged();
             }
         }
+    } 
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await (_authenticationStateProvider as ApiAuthenticationStateProvider)?.TokenIsExpired())
+        {
+            await TryGetProjects();
+        }
+        else
+        {
+            _timer = new Timer(CheckProjects, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
     }
+
     private async void OnProjectChange(Guid id)
     {
         if (_currentProject.Id != Guid.Empty)
         {
-            if (_projectUserResponses != null)
+            if (_projectsUserResponse != null)
             {
                 var apiResp = await _httpClient.Get<ApiResponse<List<ProjectUserResponse>>>("api/projects/");
                 if (apiResp != null && apiResp.Status.Code == 0)
                 {
-                    _projectUserResponses = apiResp.Data;
+                    _projectsUserResponse = apiResp.Data;
                 }
             }
-            var project = _projectUserResponses.FirstOrDefault(p => p.Id == _currentProject.Id);
+            var project = _projectsUserResponse?.FirstOrDefault(p => p.Id == _currentProject.Id);
             if (project != null)
             {
                 await _localStorageService.SetItemAsync<ProjectUserResponse>("CurrentProject", _currentProject);
