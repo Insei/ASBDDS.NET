@@ -17,7 +17,6 @@ namespace ASBDDS.Shared.Models.Database.DataDb
         public virtual Project Project { get; set; }
         public DateTime? Closed { get; set; }
         public virtual ApplicationUser Creator { get; set; }
-        public virtual Guid DeviceId { get; set; }
         public virtual Device Device { get; set; }
         public string IpxeUrl { get; set; }
         public DeviceRentStatus Status { get; set; }

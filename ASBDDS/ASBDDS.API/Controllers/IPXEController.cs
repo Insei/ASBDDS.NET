@@ -78,7 +78,7 @@ namespace ASBDDS.API.Controllers
         private async Task<Stream> GetUserIpxeCfgStream(Device device)
         {
             Stream ipxeConfigStream = null;
-            var deviceRent = _context.DeviceRents.FirstOrDefault(dr => dr.DeviceId == device.Id && dr.Status == DeviceRentStatus.ACTIVE);
+            var deviceRent = _context.DeviceRents.Include(dr => dr.Device).FirstOrDefault(dr => dr.Device.Id == device.Id && dr.Status == DeviceRentStatus.ACTIVE);
             if (deviceRent != null)
             {
                 ipxeConfigStream = new MemoryStream(Encoding.UTF8.GetBytes(ipxeCfgNormal.Replace("REPLACEURL", deviceRent.IpxeUrl)));
