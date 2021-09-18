@@ -57,7 +57,7 @@ namespace ASBDDS.API.Servers.DHCP
             var dnetIp = IPAddress.Parse(dnetIpStr);
 
             var pool = new DHCPPool(dnetPoolStr);
-            var leasesManager = new DHCPLeasesManager(pool, TimeSpan.FromMinutes(1));
+            var leasesManager = new DHCPLeasesManager(pool, TimeSpan.FromDays(7));
             var options = CreateDHCPOptions(configuration);
             return new DHCPServer(dnetIp, 67, leasesManager, options);
 
