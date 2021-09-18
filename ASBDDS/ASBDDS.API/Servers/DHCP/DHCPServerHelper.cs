@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using ASBDDS.Shared.Models.Database.DataDb;
 using GitHub.JPMikkers.DHCP;
 using Microsoft.Extensions.Configuration;
 
@@ -60,9 +62,21 @@ namespace ASBDDS.API.Servers.DHCP
             return new DHCPServer(dnetIp, 67, leasesManager, options);
 
         }
-        public static void Initialize(IServiceProvider _serviceProvider)
+        public static void Initialize(IServiceProvider serviceProvider)
         {
-            var server = _serviceProvider.GetRequiredService<DHCPServer>();
+            var server = serviceProvider.GetRequiredService<DHCPServer>();
+            var context = serviceProvider.GetRequiredService<DataDbContext>();
+            var savedLeases = new List<DHCPLease>();
+            foreach(var lease in context.DHCPLeases.ToList())
+                savedLeases.Add(new DHCPLease()
+                {
+                    Address = IPAddress.Parse(lease.Address), 
+                    MacAddress = lease.MacAddress, 
+                    Static = lease.Static, 
+                    LeaseTime = server.LeasesManager.LeaseTime
+                });
+            server.LeasesManager.LoadSavedLeases(savedLeases);
+            DHCPServerEventHandler.Init(context, server);
             server.Start();
         }
     }
