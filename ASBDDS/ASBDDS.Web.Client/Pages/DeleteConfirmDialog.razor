@@ -1,16 +1,20 @@
 ﻿<MudDialog>
     <DialogContent>
-        <MudText>Are you sure you want to delete this @(EntityName)?</MudText>
+        <MudText>Are you sure you want to @Action.ToLower() this @(EntityName)?</MudText>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Submit">Delete</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Submit">@Action</MudButton>
     </DialogActions>
 </MudDialog>
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
-    [Parameter] public string EntityName { get; set; }
+    [Parameter]
+    public string Action { get; set; } = "Delete";
+
+    [Parameter] 
+    public string EntityName { get; set; }
 
     void Submit() => MudDialog.Close(DialogResult.Ok(true));
     void Cancel() => MudDialog.Cancel();
