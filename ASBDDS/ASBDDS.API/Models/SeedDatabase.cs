@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Linq;
 using Microsoft.AspNetCore.Identity;
 
 namespace ASBDDS.API.Models
@@ -16,13 +17,18 @@ namespace ASBDDS.API.Models
             var roleManager = serviceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
             // if (!roleManager.Roles.Any(r => r.Name == "Admin"))
             // {
-                var adminRole = roleManager.FindByNameAsync("Admin").Result;
+                var adminRoleExist = true;
+                var adminRole = await roleManager.FindByNameAsync("Admin");
                 if (adminRole == null)
                 {
                     adminRole = new ApplicationRole(){ Name = "Admin", NormalizedName = "ADMIN" };
                     //create the roles and seed them to the database
-                    var roleResult = roleManager.CreateAsync(adminRole).Result;
+                    var result = await roleManager.CreateAsync(adminRole);
+                    if (!result.Succeeded)
+                        adminRoleExist = false;
                 }
+
+                var adminUserExist = true;
                 var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
                 var adminUser = await userManager.FindByNameAsync("Admin");
                 if (adminUser == null)
@@ -31,19 +37,30 @@ namespace ASBDDS.API.Models
                     {
                         UserName = "Admin", Email = "admin@asbdds.com", Name = "Admin", LastName = "Default"
                     };
-                    var res = userManager.CreateAsync(adminUser, "Admin@123").Result;
+                    var result = await userManager.CreateAsync(adminUser, "Admin@123");
+                    if (!result.Succeeded)
+                        adminUserExist = false;
                 }
-                var res1 = await userManager.AddToRoleAsync((ApplicationUser)adminUser, "Admin");
-                if (res1.Succeeded)
+
+                if (adminUserExist && adminRoleExist)
                 {
-                    dataContext.Projects.Add(new Project()
-                    {
-                        Creator = adminUser,
-                        Name = adminUser.Name + " " + adminUser.LastName + "'s Project"
-                    });
-                    dataContext.SaveChangesAsync().Wait();
+                    if(!await userManager.IsInRoleAsync(adminUser, "Admin"))
+                        await userManager.AddToRoleAsync(adminUser, "Admin");
                 }
-                // }
+                
+                if (adminUserExist)
+                {
+                    var adminDbUser = dataContext.Users.FirstOrDefault(u => u.UserName.Equals("Admin"));
+                    if (!dataContext.Projects.Any(p => p.Creator == adminDbUser))
+                    {
+                        dataContext.Projects.Add(new Project()
+                        {
+                            Creator = adminDbUser,
+                            Name = adminUser.Name + " " + adminUser.LastName + "'s Project"
+                        });
+                        await dataContext.SaveChangesAsync();
+                    }
+                }
         }
     }
 }
