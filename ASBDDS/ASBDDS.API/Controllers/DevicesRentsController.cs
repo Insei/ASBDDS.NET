@@ -220,7 +220,7 @@ namespace ASBDDS.API.Controllers
                 deviceRent.Device.StateEnum = DeviceState.CREATING;
 
                 // Enable POE on port
-                await _devicePowerControl.SwitchPower(deviceRent.Device, true);
+                _devicePowerControl.SwitchPower(deviceRent.Device, true);
                 
                 _context.DeviceRents.Add(deviceRent);
                 await _context.SaveChangesAsync();
@@ -272,9 +272,8 @@ namespace ASBDDS.API.Controllers
                 
                 // Reboot device via POE on port
                 var device = deviceRent.Device;
-                await _devicePowerControl.SwitchPower(device, false);
-                await _devicePowerControl.SwitchPower(device, true);
-                
+                _devicePowerControl.Reboot(device);
+
                 device.StateEnum = DeviceState.ERASING;
                 
                 _context.Entry(device).State = EntityState.Modified;
@@ -327,7 +326,7 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
                 var device = deviceRent.Device;
-                await _devicePowerControl.SwitchPower(device, false);
+                _devicePowerControl.SwitchPower(device, false);
                 device.StateEnum = DeviceState.POWEROFF;
                 
                 _context.Entry(device).State = EntityState.Modified;
@@ -379,7 +378,7 @@ namespace ASBDDS.API.Controllers
                 }
                 
                 var device = deviceRent.Device;
-                await _devicePowerControl.SwitchPower(device, true);
+                _devicePowerControl.SwitchPower(device, true);
                 device.StateEnum = DeviceState.POWERON;
                 
                 _context.Entry(device).State = EntityState.Modified;

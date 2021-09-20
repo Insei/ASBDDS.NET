@@ -17,6 +17,13 @@ namespace ASBDDS.API.Models
             _context = context;
         }
 
+        public async Task<int> Reboot(Device device, CancellationToken cancellationToken = default)
+        {
+            var rtt = SwitchPower(device, false, cancellationToken).ContinueWith(tt => SwitchPower(device, true, cancellationToken), cancellationToken);
+            var powerOffResult = await rtt;
+            var powerOnResult = await powerOffResult;
+            return powerOnResult;
+        }
         public async Task<int> SwitchPower(Device device, bool enable, CancellationToken cancellationToken = default)
         {
             if (device.PowerControlType == DevicePowerControlType.PoeSwitch)
