@@ -217,7 +217,7 @@ namespace ASBDDS.API.Controllers
         /// <summary>
         /// Delete device rent by ID
         /// </summary>
-        /// <param name="id">Device ID</param>
+        /// <param name="id">Device rent ID</param>
         /// <param name="projectId">Project id</param>
         /// <returns></returns>
         [HttpDelete("{id}")]
@@ -260,6 +260,109 @@ namespace ASBDDS.API.Controllers
                 _context.Entry(deviceRent).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 resp.Data = new DeviceRentUserResponse(deviceRent);
+            }
+            catch (Exception e)
+            {
+                resp.Status.Code = 1;
+                resp.Status.Message = e.Message;
+            }
+            return resp;
+        }
+
+        /// <summary>
+        /// Power off device by rent ID
+        /// </summary>
+        /// <param name="id">Device rent ID</param>
+        /// <param name="projectId">Project id</param>
+        /// <returns></returns>
+        [HttpPost("{id}/poweroff")]
+        public async Task<ApiResponse<DeviceRentUserResponse>> PowerOffDeviceByRent(
+            [FromHeader(Name = "ProjectId")] [Required] Guid projectId,
+            Guid id)
+        {
+            var resp = new ApiResponse<DeviceRentUserResponse>();
+            try
+            {
+                var project = await _context.Projects.FindAsync(projectId);
+                if (project == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "Project not found";
+                    return resp;
+                }
+                
+                var deviceRent = await _context.DeviceRents.Include(dr => dr.Device).FirstOrDefaultAsync(r => r.Id == id && r.Closed == null && r.Project == project);
+                if (deviceRent == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "device rent not found";
+                    return resp;
+                }
+
+                if (deviceRent.Device.StateEnum is DeviceState.ERASING or DeviceState.CREATING or DeviceState.PROVISIONING or DeviceState.POWEROFF)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "You cannot turn off the device in this state";
+                    return resp;
+                }
+                var device = deviceRent.Device;
+                await _devicePowerControl.SwitchPower(device, false);
+                device.StateEnum = DeviceState.POWEROFF;
+                
+                _context.Entry(device).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                resp.Status.Code = 1;
+                resp.Status.Message = e.Message;
+            }
+            return resp;
+        }
+        
+        /// <summary>
+        /// Power on device by rent ID
+        /// </summary>
+        /// <param name="id">Device rent ID</param>
+        /// <param name="projectId">Project id</param>
+        /// <returns></returns>
+        [HttpPost("{id}/poweron")]
+        public async Task<ApiResponse<DeviceRentUserResponse>> PowerOnDeviceByRent(
+            [FromHeader(Name = "ProjectId")] [Required] Guid projectId,
+            Guid id)
+        {
+            var resp = new ApiResponse<DeviceRentUserResponse>();
+            try
+            {
+                var project = await _context.Projects.FindAsync(projectId);
+                if (project == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "Project not found";
+                    return resp;
+                }
+                
+                var deviceRent = await _context.DeviceRents.Include(dr => dr.Device).FirstOrDefaultAsync(r => r.Id == id && r.Closed == null && r.Project == project);
+                if (deviceRent == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "device rent not found";
+                    return resp;
+                }
+
+                if (deviceRent.Device.StateEnum != DeviceState.POWEROFF)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "You cannot turn on the device in this state";
+                    return resp;
+                }
+                
+                var device = deviceRent.Device;
+                await _devicePowerControl.SwitchPower(device, true);
+                device.StateEnum = DeviceState.POWERON;
+                
+                _context.Entry(device).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
             }
             catch (Exception e)
             {
