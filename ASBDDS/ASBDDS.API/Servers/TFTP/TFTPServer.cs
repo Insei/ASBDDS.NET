@@ -19,7 +19,10 @@ namespace ASBDDS.API.Servers.TFTP
 
         public TFTPServer(string ip, int port = 69, DHCPServer dhcp = null)
         {
-            var ipAddr = IPAddress.Parse(ip);
+            IPAddress ipAddr = IPAddress.Any;
+            if(!string.IsNullOrEmpty(ip))
+                ipAddr = IPAddress.Parse(ip);
+            
             _tftp = new TftpServer(ipAddr, port);
             _dhcp = dhcp;
             TftpDirectory = BootloaderSetupHelper.TftpDirectory;
@@ -79,7 +82,7 @@ namespace ASBDDS.API.Servers.TFTP
             }
             else
             {
-                var stream = new FileStream(file.FullName, FileMode.Open);
+                var stream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.Read);
                 StartTransfer(transfer, stream);
             }
         }
