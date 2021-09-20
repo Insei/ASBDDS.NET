@@ -13,15 +13,15 @@ namespace ASBDDS.API.Servers.DHCP
     {
         private static List<OptionItem> CreateDHCPOptions(IConfiguration configuration)
         {
-            var dnetIpStr = configuration.GetValue<string>("Networks:Devices:IP");
-            var dnetGatewayStr = configuration.GetValue<string>("Networks:Devices:DHCP:gateway");
-            var dnetMaskStr = configuration.GetValue<string>("Networks:Devices:DHCP:mask");
-            var dnetDNSArrStr = configuration.GetSection("Networks:Devices:DHCP:dns").Get<string[]>();
+            var dhcpServerIdentifierStr = configuration.GetValue<string>("Networks:Devices:DHCP:ServerIdentifier");
+            var dnetGatewayStr = configuration.GetValue<string>("Networks:Devices:DHCP:Gateway");
+            var dnetMaskStr = configuration.GetValue<string>("Networks:Devices:DHCP:Mask");
+            var dnetDNSArrStr = configuration.GetSection("Networks:Devices:DHCP:DNS").Get<string[]>();
             var dnetDNSArr = new List<IPAddress>();
             foreach(var dnsStr in dnetDNSArrStr)
                 dnetDNSArr.Add(IPAddress.Parse(dnsStr));
             
-            var dnetIp = IPAddress.Parse(dnetIpStr);
+            var dhcpServerIdentifier = IPAddress.Parse(dhcpServerIdentifierStr);
             var dnetGateway =  IPAddress.Parse(dnetGatewayStr);
             var dnetMask =  IPAddress.Parse(dnetMaskStr);
             
@@ -34,10 +34,10 @@ namespace ASBDDS.API.Servers.DHCP
                 }));
 
             dhcpOptions.Add(new OptionItem(mode: OptionMode.Force,
-                option: new DHCPOptionServerIdentifier(dnetIp)));
+                option: new DHCPOptionServerIdentifier(dhcpServerIdentifier)));
 
             dhcpOptions.Add(new OptionItem(mode: OptionMode.Force,
-                option: new DHCPOptionTFTPServerName(dnetIpStr)));
+                option: new DHCPOptionTFTPServerName(dhcpServerIdentifierStr)));
 
             dhcpOptions.Add(new OptionItem(mode: OptionMode.Force,
                 option: new DHCPOptionHostName("ASBDDS")));
@@ -54,7 +54,9 @@ namespace ASBDDS.API.Servers.DHCP
         {
             var dnetIpStr = configuration.GetValue<string>("Networks:Devices:IP");
             var dnetPoolStr = configuration.GetValue<string>("Networks:Devices:DHCP:pool");
-            var dnetIp = IPAddress.Parse(dnetIpStr);
+            IPAddress dnetIp = IPAddress.Any;
+            if(!string.IsNullOrEmpty(dnetIpStr))
+                dnetIp = IPAddress.Parse(dnetIpStr);
 
             var pool = new DHCPPool(dnetPoolStr);
             var leasesManager = new DHCPLeasesManager(pool, TimeSpan.FromDays(7));
