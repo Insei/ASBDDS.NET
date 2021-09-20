@@ -39,6 +39,8 @@
                 <MudMenu Label="Options" Size="Size.Small" Dense="true" FullWidth="true" Direction="Direction.Start">
                     <MudMenuItem OnClick="@(() => ShowUpdateDialog(context))">Edit</MudMenuItem>
                     <MudMenuItem OnClick="@(() => DeleteDeviceRent(context))">Release</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => PowerOffDeviceByRent(context))">Power Off</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => PowerOnDeviceByRent(context))">Power On</MudMenuItem>
                 </MudMenu>
             </MudTd>
         }
@@ -111,6 +113,55 @@
         if (!result.Cancelled)
         {
             var apiResp = await _httpClient.Delete<ApiResponse<DeviceRentUserResponse>>("api/devices/rents/" + device.Id, null);
+            if (apiResp == null || apiResp.Status.Code != 0)
+            {
+                if (apiResp != null)
+                    _snackBars.ShowError(apiResp.Status.Message);
+                else
+                    _snackBars.ShowError("Unhandled error");
+            }
+            else
+            {
+                _loading = true;
+                await UpdateTableData(true);
+            }
+        }
+    }
+    private async void PowerOffDeviceByRent(DeviceRentUserResponse device)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("EntityName", "device");
+        parameters.Add("Action", "Power off");
+
+        var result = await _dialogService.Show<DeleteConfirmDialog>("Power off", parameters).Result;
+        if (!result.Cancelled)
+        {
+            var apiResp = await _httpClient.Post<ApiResponse<DeviceRentUserResponse>>("api/devices/rents/" + device.Id + "/poweroff", null);
+            if (apiResp == null || apiResp.Status.Code != 0)
+            {
+                if (apiResp != null)
+                    _snackBars.ShowError(apiResp.Status.Message);
+                else
+                    _snackBars.ShowError("Unhandled error");
+            }
+            else
+            {
+                _loading = true;
+                await UpdateTableData(true);
+            }
+        }
+    }
+    
+    private async void PowerOnDeviceByRent(DeviceRentUserResponse device)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("EntityName", "device");
+        parameters.Add("Action", "Power on");
+
+        var result = await _dialogService.Show<DeleteConfirmDialog>("Power on", parameters).Result;
+        if (!result.Cancelled)
+        {
+            var apiResp = await _httpClient.Post<ApiResponse<DeviceRentUserResponse>>("api/devices/rents/" + device.Id + "/poweron", null);
             if (apiResp == null || apiResp.Status.Code != 0)
             {
                 if (apiResp != null)
