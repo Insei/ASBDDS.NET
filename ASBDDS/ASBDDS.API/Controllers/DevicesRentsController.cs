@@ -164,13 +164,34 @@ namespace ASBDDS.API.Controllers
             try
             {
                 var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(HttpContext.User.Identity.Name));
-                var project = await _context.Projects.FindAsync(projectId);
+                var project = await _context.Projects.Include(p => p.ProjectDeviceLimits).FirstOrDefaultAsync(p => p.Id == projectId);
                 if (project == null)
                 {
                     resp.Status.Code = 1;
                     resp.Status.Message = "Project not found";
                     return resp;
                 }
+                
+                var limit = project.ProjectDeviceLimits.FirstOrDefault(l =>
+                    l.Model == devRentReq.Model && l.Manufacturer == devRentReq.Manufacturer);
+                if (limit == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "In this project we can't rent this device model.";
+                    return resp;
+                }
+
+                var countInRentByProjectAndWithSelectedModel = _context.DeviceRents.Include(dr => dr.Device)
+                    .Count(dr => dr.Status == DeviceRentStatus.ACTIVE
+                                 && dr.Device.Manufacturer == devRentReq.Manufacturer
+                                 && dr.Device.Model == devRentReq.Model);
+                if (limit.Count <= countInRentByProjectAndWithSelectedModel)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "You cannot rent a device of this model due to project restrictions.";
+                    return resp;
+                }
+                
                 var devicesIdInRents = await _context.DeviceRents.Where(r => r.Closed == null).Select(r => r.Device.Id).ToListAsync();
                 var freeDevice = await _context.Devices
                     .FirstOrDefaultAsync(d => !devicesIdInRents.Contains(d.Id) && d.Manufacturer == devRentReq.Manufacturer && d.Model == devRentReq.Model);
