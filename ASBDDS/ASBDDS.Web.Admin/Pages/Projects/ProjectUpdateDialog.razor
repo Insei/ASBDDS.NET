@@ -12,16 +12,16 @@
             <MudItem xs="12">
                 <MudTextField Class="my-2" @bind-Value="@_projectAdminPutRequest.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
-            <MudItem xs="12">
-                <MudTextField Class="my-2" @bind-Value="@_projectAdminPutRequest.AllowCustomBootloaders" Label="Allow Custom Boot Loaders" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
-            </MudItem>
-            <MudDivider Class="mt-2 mb-1" />
-            <MudItem xs="12">
-                <MudTextField Class="my-2" @bind-Value="@_projectAdminPutRequest.DefaultVlan" Label="Default Vlan" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField Class="my-2" @bind-Value="@_projectAdminPutRequest.Disabled" Label="Disabled" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
-            </MudItem>
+            @* <MudItem xs="12"> *@
+            @*     <MudTextField Class="my-2" @bind-Value="@_projectAdminPutRequest.AllowCustomBootloaders" Label="Allow Custom Boot Loaders" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField> *@
+            @* </MudItem> *@
+            @* <MudDivider Class="mt-2 mb-1" /> *@
+            @* <MudItem xs="12"> *@
+            @*     <MudTextField Class="my-2" @bind-Value="@_projectAdminPutRequest.DefaultVlan" Label="Default Vlan" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField> *@
+            @* </MudItem> *@
+            @* <MudItem xs="12"> *@
+            @*     <MudTextField Class="my-2" @bind-Value="@_projectAdminPutRequest.Disabled" Label="Disabled" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField> *@
+            @* </MudItem> *@
             <MudDivider Class="mt-2 mb-1"/>
             <b>Devices limits</b>
             @foreach (var devLimit in _projectAdminPutRequest.ProjectDeviceLimits)

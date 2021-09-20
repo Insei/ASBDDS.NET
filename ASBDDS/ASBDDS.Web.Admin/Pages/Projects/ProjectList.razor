@@ -15,8 +15,8 @@
     <HeaderContent>
         <MudTh>Id</MudTh>
         <MudTh>Name</MudTh>
-        <MudTh>Allow Custom Boot Loaders</MudTh>
-        <MudTh>Default Vlan</MudTh>
+        @* <MudTh>Allow Custom Boot Loaders</MudTh> *@
+        @* <MudTh>Default Vlan</MudTh> *@
         <MudTh>Disabled</MudTh>
         <MudTh></MudTh>
         <MudTh></MudTh>
@@ -24,9 +24,9 @@
     <RowTemplate>
         <MudTd DataLabel="Id">@context.Id</MudTd>
         <MudTd DataLabel="Name">@context.Name</MudTd>
-        <MudTd DataLabel="AllowCustomBootloaders">@context.AllowCustomBootloaders</MudTd>
-        <MudTd DataLabel="DefaultVlan">@context.DefaultVlan</MudTd>
-        <MudTd DataLabel="DefaultVlan">@context.Disabled</MudTd>
+        @* <MudTd DataLabel="AllowCustomBootloaders">@context.AllowCustomBootloaders</MudTd> *@
+        @* <MudTd DataLabel="DefaultVlan">@context.DefaultVlan</MudTd> *@
+        <MudTd DataLabel="Disabled">@context.Disabled</MudTd>
         <MudTd Style="white-space: nowrap; width: 1%;">
             <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => ShowDevices(context.Id.ToString()))">
                 @((ShowDeviceLimits.GetValueOrDefault(context.Id.ToString()) == true)? "Hide" : "Show") Device Limits

@@ -12,13 +12,13 @@
             <MudItem xs="12">
                 <MudTextField Class="my-2" @bind-Value="@_projectAdminPostRequest.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
-            <MudItem xs="12">
-                <MudTextField Class="my-2" @bind-Value="@_projectAdminPostRequest.AllowCustomBootloaders" Label="Allow Custom Boot Loaders" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
-            </MudItem>
-            <MudDivider Class="mt-2 mb-1" />
-            <MudItem xs="12">
-                <MudTextField Class="my-2" @bind-Value="@_projectAdminPostRequest.DefaultVlan" Label="Default Vlan" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
-            </MudItem>
+            @* <MudItem xs="12"> *@
+            @*     <MudTextField Class="my-2" @bind-Value="@_projectAdminPostRequest.AllowCustomBootloaders" Label="Allow Custom Boot Loaders" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField> *@
+            @* </MudItem> *@
+            @* <MudDivider Class="mt-2 mb-1" /> *@
+            @* <MudItem xs="12"> *@
+            @*     <MudTextField Class="my-2" @bind-Value="@_projectAdminPostRequest.DefaultVlan" Label="Default Vlan" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField> *@
+            @* </MudItem> *@
             <MudDivider Class="mt-2 mb-1"/>
             <b>Devices limits</b>
             @foreach (var devLimit in _projectAdminPostRequest.ProjectDeviceLimits)
