@@ -16,6 +16,7 @@ namespace ASBDDS.API.Servers.DHCP
             var dhcpServerIdentifierStr = configuration.GetValue<string>("Networks:Devices:DHCP:ServerIdentifier");
             var dnetGatewayStr = configuration.GetValue<string>("Networks:Devices:DHCP:Gateway");
             var dnetMaskStr = configuration.GetValue<string>("Networks:Devices:DHCP:Mask");
+            var dnetBroadcastAddressStr = configuration.GetValue<string>("Networks:Devices:DHCP:Broadcast");
             var dnetDNSArrStr = configuration.GetSection("Networks:Devices:DHCP:DNS").Get<string[]>();
             var dnetDNSArr = new List<IPAddress>();
             foreach(var dnsStr in dnetDNSArrStr)
@@ -24,6 +25,7 @@ namespace ASBDDS.API.Servers.DHCP
             var dhcpServerIdentifier = IPAddress.Parse(dhcpServerIdentifierStr);
             var dnetGateway =  IPAddress.Parse(dnetGatewayStr);
             var dnetMask =  IPAddress.Parse(dnetMaskStr);
+            var dnetBroadcastAddress = IPAddress.Parse(dnetBroadcastAddressStr);
             
             
             var dhcpOptions = new List<OptionItem>();
@@ -44,6 +46,9 @@ namespace ASBDDS.API.Servers.DHCP
             
             dhcpOptions.Add(new OptionItem(OptionMode.Default, 
                 new DHCPOptionSubnetMask(dnetMask)));
+            
+            dhcpOptions.Add(new OptionItem(OptionMode.Default, 
+                new DHCPOptionBroadcastAddress(dnetBroadcastAddress)));
             
             dhcpOptions.Add(new OptionItem(OptionMode.Default, 
                 new DHCPOptionDomainNameServer(){ IPAddresses = dnetDNSArr} ));
