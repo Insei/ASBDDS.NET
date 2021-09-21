@@ -269,12 +269,16 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
 
-                _devicePowerControl.SwitchPower(device, enable);
-
                 if (enable)
+                {
+                    _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOn);
                     device.StateEnum = DeviceState.POWERON;
+                }
                 else
+                {
+                    _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOff);
                     device.StateEnum = DeviceState.POWEROFF;
+                }
 
                 _context.Entry(device).State = EntityState.Modified;
 

@@ -41,7 +41,7 @@ namespace ASBDDS.API.Controllers
         private async Task<Stream> OnEraseComplete(Device device)
         {
             // Disable POE on port
-            await _devicePowerControl.SwitchPower(device, false);
+            await _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOff);
             
             var deviceRent = _context.DeviceRents.FirstOrDefault(dr => dr.Device.Id == device.Id && dr.Status == DeviceRentStatus.CLOSING);
             if (deviceRent != null)

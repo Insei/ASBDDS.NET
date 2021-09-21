@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ASBDDS.Shared.Helpers;
@@ -16,15 +17,8 @@ namespace ASBDDS.API.Models
         {
             _context = context;
         }
-
-        public async Task<int> Reboot(Device device, CancellationToken cancellationToken = default)
-        {
-            var rtt = SwitchPower(device, false, cancellationToken).ContinueWith(tt => SwitchPower(device, true, cancellationToken), cancellationToken);
-            var powerOffResult = await rtt;
-            var powerOnResult = await powerOffResult;
-            return powerOnResult;
-        }
-        public async Task<int> SwitchPower(Device device, bool enable, CancellationToken cancellationToken = default)
+        
+        public async Task<int> SwitchPower(Device device, DevicePowerAction action, CancellationToken cancellationToken = default)
         {
             if (device.PowerControlType == DevicePowerControlType.PoeSwitch)
             {
@@ -40,14 +34,28 @@ namespace ASBDDS.API.Models
 
                 if (powerControl != null)
                 {
-                    if(enable)
-                        return await powerControl?.PowerOn(deviceWithIncludes, cancellationToken);
-
-                    return await powerControl?.PowerOff(deviceWithIncludes, cancellationToken);
+                    switch (action)
+                    {
+                        case DevicePowerAction.PowerOff:
+                            return await powerControl?.PowerOff(deviceWithIncludes, cancellationToken);
+                            break;
+                        case DevicePowerAction.PowerOn:
+                            return await powerControl?.PowerOn(deviceWithIncludes, cancellationToken);
+                            break;
+                        case DevicePowerAction.Reboot:
+                            var powerOffResult = await powerControl?.PowerOff(deviceWithIncludes, cancellationToken);
+                            var powerOnResult = await powerControl?.PowerOn(deviceWithIncludes, cancellationToken);
+                            if (powerOffResult == 0 && powerOnResult == 0)
+                                return 0;
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(action), action, null);
+                    }
+                    return 1;
                 }
             }
 
-            return 1;
+            return 0;
         }
     }
 }
