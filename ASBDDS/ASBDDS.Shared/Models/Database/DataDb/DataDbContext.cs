@@ -20,5 +20,7 @@ namespace ASBDDS.Shared.Models.Database.DataDb
         public DbSet<DeviceRent> DeviceRents { get; set; }
         public DbSet<UserApiKey> UserApiKeys { get; set; }
         public DbSet<DHCPLeaseDb> DHCPLeases { get; set; }
+        public DbSet<DbConsole> Consoles { get; set; }
+        public DbSet<SerialPortSettings> SerialPortsSettings { get; set; }
     }
 }

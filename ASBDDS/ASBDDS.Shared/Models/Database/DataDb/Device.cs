@@ -15,5 +15,6 @@ namespace ASBDDS.Shared.Models.Database.DataDb
         public string MacAddress { get; set; }
         public virtual SwitchPort SwitchPort { get; set; }
         public DevicePowerControlType PowerControlType { get; set; }
+        public virtual DbConsole Console { get; set; }
     }
 }
