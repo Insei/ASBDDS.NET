@@ -39,13 +39,11 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<List<DeviceAdminResponse>>();
             try
             {
-                var devices = await _context.Devices.Include(d => d.SwitchPort).ToArrayAsync();
-                var _devices = new List<DeviceAdminResponse>();
-                foreach(Device device in devices)
-                {
-                    _devices.Add(new DeviceAdminResponse(device));
-                }
-                resp.Data = _devices;
+                var devices = await _context.Devices
+                    .Include(d => d.SwitchPort)
+                    .Include(d => d.Console).Select(device => new DeviceAdminResponse(device)).ToListAsync();
+                
+                resp.Data = devices;
             }
             catch(Exception e)
             {
@@ -102,7 +100,6 @@ namespace ASBDDS.API.Controllers
             try
             {
                 var device = await _context.Devices.Where(d => d.Id == id).Include(d => d.SwitchPort).ThenInclude(d => d.Switch).FirstOrDefaultAsync();
-
                 if(device == null)
                 {
                     resp.Status.Code = 1;
@@ -119,6 +116,10 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
 
+                DbConsole console = null;
+                if(deviceReq.ConsoleId != null)
+                    console = _context.Consoles.FirstOrDefault(c => c.Id == deviceReq.ConsoleId);
+                
                 device.Manufacturer = deviceReq.Manufacturer;
                 device.MacAddress = deviceReq.MacAddress;
                 device.Model = deviceReq.Model;
@@ -126,6 +127,7 @@ namespace ASBDDS.API.Controllers
                 device.Serial = deviceReq.Serial;
                 device.PowerControlType = deviceReq.PowerControlType;
                 device.SwitchPort = switchPort;
+                device.Console = console;
                 
                 _context.Entry(device).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
@@ -161,6 +163,10 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
                
+                DbConsole console = null;
+                if(deviceReq.ConsoleId != null)
+                    console = _context.Consoles.FirstOrDefault(c => c.Id == deviceReq.ConsoleId);
+                
                 var device = new Device
                 {
                     Manufacturer = deviceReq.Manufacturer,
@@ -172,7 +178,8 @@ namespace ASBDDS.API.Controllers
                     MacAddress = deviceReq.MacAddress,
                     Model = deviceReq.Model,
                     Name = deviceReq.Name,
-                    PowerControlType = deviceReq.PowerControlType
+                    PowerControlType = deviceReq.PowerControlType,
+                    Console = console
                 };
                 _context.Devices.Add(device);
                 await _context.SaveChangesAsync();

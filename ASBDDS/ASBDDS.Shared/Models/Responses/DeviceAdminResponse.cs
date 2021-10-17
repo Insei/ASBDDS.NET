@@ -43,17 +43,21 @@ namespace ASBDDS.Shared.Models.Responses
         /// Power control type
         /// </summary>
         public DevicePowerControlType PowerControlType { get; set; }
-        public DeviceAdminResponse(Device _device)
+
+        public Guid? ConsoleId { get; set; }
+
+        public DeviceAdminResponse(Device device)
         {
-            Id = _device.Id;
-            Name = _device.Name;
-            Model = _device.Model;
-            Manufacturer = _device.Manufacturer;
-            Serial = _device.Serial;
-            MacAddress = _device.MacAddress;
-            SwitchPortId = _device.SwitchPort.Id;
-            State = _device.StateEnum.ToString().ToLower();
-            PowerControlType = _device.PowerControlType;
+            Id = device.Id;
+            Name = device.Name;
+            Model = device.Model;
+            Manufacturer = device.Manufacturer;
+            Serial = device.Serial;
+            MacAddress = device.MacAddress;
+            SwitchPortId = device.SwitchPort.Id;
+            State = device.StateEnum.ToString().ToLower();
+            PowerControlType = device.PowerControlType;
+            ConsoleId = device.Console?.Id;
         }
 
         public DeviceAdminResponse() { }

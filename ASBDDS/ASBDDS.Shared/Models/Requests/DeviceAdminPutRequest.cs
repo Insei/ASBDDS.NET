@@ -37,6 +37,7 @@ namespace ASBDDS.Shared.Models.Requests
         /// Power control type
         /// </summary>
         public DevicePowerControlType PowerControlType { get; set; }
+        public Guid? ConsoleId { get; set; }
         public DeviceAdminPutRequest() { }
     }
 }
