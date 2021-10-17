@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using System.IO;
+using System.Text.Json.Serialization;
 using ASBDDS.API.Servers.DHCP;
 using ASBDDS.NET.MappingProfiles;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -72,7 +73,8 @@ namespace ASBDDS.NET
                     };
                 });
             
-            services.AddControllersWithViews();
+            services.AddControllersWithViews().AddJsonOptions(options => 
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
             services.AddRazorPages();
             services.AddSwaggerGen(c =>
             {
