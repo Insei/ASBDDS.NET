@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using System.IO;
 using ASBDDS.API.Servers.DHCP;
+using ASBDDS.NET.MappingProfiles;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using DHCPServer = ASBDDS.API.Servers.DHCP.DHCPServer;
@@ -110,6 +111,7 @@ namespace ASBDDS.NET
                     }  
                 });
             });
+            services.AddAutoMapper(typeof(DbConsoleMappings), typeof(SerialPortSettingsMappings));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
