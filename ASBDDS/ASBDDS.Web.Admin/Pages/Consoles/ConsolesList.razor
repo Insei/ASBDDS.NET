@@ -1,0 +1,129 @@
+﻿@page "/consoles"
+@using ASBDDS.Shared.Models.Responses
+@using ASBDDS.Shared.Dtos.DbConsole
+@inject IHttpService _httpClient
+@inject IDialogService _dialogService
+
+<MudTable Items="@_consoles" Dense="@_dense" Hover="@_hover" Loading="@_loading" Bordered="@_bordered" Striped="@_striped" Filter="new Func<AdminDbConsoleDto,bool>(FilterFunc1)" @bind-SelectedItem="_selectedItem">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Consoles List</MudText>
+        <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
+        <MudText Class="small">Add Console</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Id</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Type</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Id">@context.Id</MudTd>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Type">@context.Type</MudTd>
+        <MudTd Style="white-space: nowrap; width: 1%;" DataLabel="Options">
+            <MudMenu Label="Options" Size="Size.Small" Dense="true" FullWidth="true" Direction="Direction.Start">
+                <MudMenuItem OnClick="@(() => ShowUpdateDialog(context))">Edit</MudMenuItem>
+                <MudMenuItem OnClick="@(() => Delete(context))">Delete</MudMenuItem>
+            </MudMenu>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+<SnackBars @ref="_snackBars"></SnackBars>
+
+@code {
+    private IEnumerable<AdminDbConsoleDto> _consoles = new List<AdminDbConsoleDto>();
+    private bool _loading;
+    private bool _dense = true;
+    private bool _hover = true;
+    private bool _striped = true;
+    private bool _bordered = true;
+    private string _searchString = "";
+    private AdminDbConsoleDto _selectedItem = null;
+    private SnackBars _snackBars;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await GetDataFromServer();
+    }
+
+    private async Task<int> GetDataFromServer(bool StateChanged = false)
+    {
+        var apiResp = await _httpClient.Get<ApiResponse<List<AdminDbConsoleDto>>>("api/admin/consoles/");
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            _loading = false;
+            if (apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+        {
+            _loading = false;
+            _consoles = apiResp.Data;
+            if (StateChanged) StateHasChanged();
+        }
+        return 0;
+    }
+    
+    private async void ShowCreateDialog()
+    {
+        var dialog = _dialogService.Show<ConsoleCreateDialog>("Create console");
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+        {
+            _loading = true;
+            var res = await GetDataFromServer(true);
+        }
+    }
+    
+    private async void ShowUpdateDialog(AdminDbConsoleDto console)
+    {
+        var parameters = new DialogParameters { ["DbConsoleDto"] = console };
+        var dialogOptions = new DialogOptions() { MaxWidth = MaxWidth.False };
+        var dialog = _dialogService.Show<ConsoleUpdateDialog>("Edit Console", parameters, dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+        {
+            _loading = true;
+            var res = await GetDataFromServer(true);
+        }
+    }
+    
+    private async Task Delete(AdminDbConsoleDto console)
+    {
+        var apiResp = await _httpClient.Delete<ApiResponse>(
+            "api/admin/consoles/" + console.Id, 
+            null);
+        
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            if (apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+        {
+            await GetDataFromServer();
+            StateHasChanged();
+        }
+    }
+    
+    private bool FilterFunc1(AdminDbConsoleDto console) => FilterFunc(console, _searchString);
+    
+    private bool FilterFunc(AdminDbConsoleDto console, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (console.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+    
+}
