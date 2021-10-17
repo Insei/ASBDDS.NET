@@ -4,6 +4,7 @@
 @using Newtonsoft.Json
 @using ASBDDS.Shared.Helpers
 @using System.Text
+@using ASBDDS.Shared.Dtos.DbConsole
 @inject IHttpService httpClient
 
 <MudDialog DisableSidePadding="true">
@@ -56,13 +57,19 @@
                 }
             </MudSelect>
             <MudSelect Class="my-2" @bind-Value="@_deviceAdminPostRequest.SwitchPortId" Label="Port" Variant="Variant.Outlined" Margin="Margin.Dense">
-                @foreach (var _switch in switches)
+                @foreach (var _switch in _switches)
                 {
                     foreach (var port in _switch.Ports)
                     {
                         var portFullName = _switch.Name + " (" + _switch.Model + " / " + port.Number + ")";
                         <MudSelectItem Value="@port.Id">@portFullName</MudSelectItem>
                     }
+                }
+            </MudSelect>
+            <MudSelect Class="my-2" @bind-Value="@_deviceAdminPostRequest.ConsoleId" Label="Console" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @foreach (var console in _consoles)
+                {
+                    <MudSelectItem Value="@((Guid?)console.Id)">@(console.Type + ": " + console.Name)</MudSelectItem>
                 }
             </MudSelect>
         </MudContainer>
@@ -78,7 +85,8 @@
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
     private DeviceAdminPostRequest _deviceAdminPostRequest;
-    private List<SwitchAdminResponse> switches = new List<SwitchAdminResponse>();
+    private List<SwitchAdminResponse> _switches = new List<SwitchAdminResponse>();
+    private List<AdminDbConsoleDto> _consoles = new List<AdminDbConsoleDto>();
     private SnackBars _snackBars;
 
     void Cancel() => MudDialog.Cancel();
@@ -87,10 +95,38 @@
     {
         _deviceAdminPostRequest = new DeviceAdminPostRequest();
 
-        var responseBody = await httpClient.Get<ApiResponse<List<SwitchAdminResponse>>>("api/admin/switches/");
-        switches = responseBody.Data;
+        await GetSwitches();
+        await GetConsoles();
     }
 
+    private async Task GetSwitches()
+    {
+        var apiResp = await httpClient.Get<ApiResponse<List<SwitchAdminResponse>>>("api/admin/switches/");
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            if(apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+            _switches = apiResp.Data;
+    }
+    
+    private async Task GetConsoles()
+    {
+        var apiResp = await httpClient.Get<ApiResponse<List<AdminDbConsoleDto>>>("api/admin/consoles/");
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            if(apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+            _consoles = apiResp.Data;
+    }
+    
     private async void Create()
     {
         var apiResp = await httpClient.Post<ApiResponse<DeviceAdminPostRequest>>("api/admin/devices", _deviceAdminPostRequest);

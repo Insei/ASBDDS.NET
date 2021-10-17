@@ -3,8 +3,10 @@
 @using ASBDDS.Shared.Helpers
 @using Newtonsoft.Json
 @using System.Text
+@using ASBDDS.Shared.Dtos.DbConsole
 @using ASBDDS.Shared.Models.Database.DataDb
 @using Microsoft.AspNetCore.Components
+@using System.Linq
 @inject IHttpService httpClient
 
 <MudDialog DisableSidePadding="true">
@@ -43,20 +45,20 @@
                 <MudTextField Class="my-2" @bind-Value="@_deviceAdminPutRequest.MacAddress" Label="Mac Address" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
             <MudSelect Class="my-2" @bind-Value="_deviceAdminPutRequest.PowerControlType" Label="Power control type" Variant="Variant.Outlined" Margin="Margin.Dense">
-                            @{
-                                if (_deviceAdminPutRequest.Manufacturer != "")
-                                {
-                                    var deviceHelper = new DeviceHelper();
-                                    var models = deviceHelper.GetModels(_deviceAdminPutRequest.Manufacturer);
-                                    foreach (DevicePowerControlType type in Enum.GetValues(typeof(DevicePowerControlType)))
-                                    {
-                                        <MudSelectItem Value="@type">@type</MudSelectItem>
-                                    }
-                                }
-                            }
-                        </MudSelect>
-            <MudSelect Class="my-2" @bind-Text="@selectedSwitchPortName" @bind-Value="@_deviceAdminPutRequest.SwitchPortId" Label="Port type" Variant="Variant.Outlined" Margin="Margin.Dense">
-                @foreach (var _switch in switches)
+                @{
+                    if (_deviceAdminPutRequest.Manufacturer != "")
+                    {
+                        var deviceHelper = new DeviceHelper();
+                        var models = deviceHelper.GetModels(_deviceAdminPutRequest.Manufacturer);
+                        foreach (DevicePowerControlType type in Enum.GetValues(typeof(DevicePowerControlType)))
+                        {
+                            <MudSelectItem Value="@type">@type</MudSelectItem>
+                        }
+                    }
+                }
+            </MudSelect>
+            <MudSelect Class="my-2" @bind-Text="@_selectedSwitchPortName" @bind-Value="@_deviceAdminPutRequest.SwitchPortId" Label="Port type" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @foreach (var _switch in _switches)
                 {
                     foreach (var port in _switch.Ports)
                     {
@@ -64,9 +66,11 @@
                         <MudSelectItem Value="@port.Id">@portFullName</MudSelectItem>
                     }
                 }
-                @if (Guid.Empty != _deviceAdminPutRequest.SwitchPortId)
+            </MudSelect>
+            <MudSelect Class="my-2" @bind-Text="@_selectedConsoleName" @bind-Value="@_deviceAdminPutRequest.ConsoleId" Label="Console" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @foreach (var console in _consoles)
                 {
-
+                    <MudSelectItem Value="@((Guid?)console.Id)"> @(console.Type + ": " + console.Name)</MudSelectItem>
                 }
             </MudSelect>
         </MudContainer>
@@ -77,6 +81,7 @@
     </DialogActions>
 </MudDialog>
 <SnackBars @ref="_snackBars"></SnackBars>
+
 @code {
 
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
@@ -84,8 +89,10 @@
     [Parameter] public DeviceAdminResponse _device { get; set; } = new DeviceAdminResponse();
 
     private DeviceAdminPutRequest _deviceAdminPutRequest;
-    private List<SwitchAdminResponse> switches = new List<SwitchAdminResponse>();
-    private string selectedSwitchPortName = "";
+    private List<SwitchAdminResponse> _switches = new List<SwitchAdminResponse>();
+    private List<AdminDbConsoleDto> _consoles = new List<AdminDbConsoleDto>();
+    private string _selectedSwitchPortName = "";
+    private string _selectedConsoleName = "";
     private SnackBars _snackBars;
 
     void Cancel() => MudDialog.Cancel();
@@ -102,13 +109,56 @@
         _deviceAdminPutRequest.SwitchPortId = _device.SwitchPortId;
         _deviceAdminPutRequest.PowerControlType = _device.PowerControlType;
 
-        var responseBody = await httpClient.Get<ApiResponse<List<SwitchAdminResponse>>>("api/admin/switches/");
-        switches = responseBody.Data;
-        var @switch = switches.Where(s => s.Ports.Any(p => p.Id == _device.SwitchPortId)).FirstOrDefault();
+        await GetSwitches();
+        SetupCurrentSwitchPortName();
+        await GetConsoles();
+        SetupCurrentConsoleName();
+    }
+
+    private void SetupCurrentSwitchPortName()
+    {
+        var @switch = _switches.Where(s => s.Ports.Any(p => p.Id == _device.SwitchPortId)).FirstOrDefault();
         if (@switch != null)
         {
-            selectedSwitchPortName = @switch.Name + " (" + @switch.Model + " / " + @switch.Ports.Find(p => p.Id == _device.SwitchPortId).Number + ")";
+            _selectedSwitchPortName = @switch.Name + " (" + @switch.Model + " / " + @switch.Ports.Find(p => p.Id == _device.SwitchPortId).Number + ")";
         }
+    }
+    
+    private void SetupCurrentConsoleName()
+    {
+        var console = _consoles.FirstOrDefault(s => s.Id == _device.ConsoleId);
+        if (console != null)
+        {
+            _selectedConsoleName = console.Type + ": " + console.Name;
+        }
+    }
+    
+    private async Task GetSwitches()
+    {
+        var apiResp = await httpClient.Get<ApiResponse<List<SwitchAdminResponse>>>("api/admin/switches/");
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            if(apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+            _switches = apiResp.Data;
+    }
+    
+    private async Task GetConsoles()
+    {
+        var apiResp = await httpClient.Get<ApiResponse<List<AdminDbConsoleDto>>>("api/admin/consoles/");
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            if(apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+            _consoles = apiResp.Data;
     }
 
     private async void Update()
