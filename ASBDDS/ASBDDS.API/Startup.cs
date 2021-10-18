@@ -144,7 +144,8 @@ namespace ASBDDS.NET
             DHCPServerHelper.Initialize(serviceProvider);
             // Configure and start TFTP Server
             TFTPServerHelper.Initialize(serviceProvider);
-
+            // Configure consoles from DB and start listening.
+            ConsolesManagerHelper.Initialize(serviceProvider);
             //app.UseHttpsRedirection();
 
             app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/admin"), adminPanel =>
