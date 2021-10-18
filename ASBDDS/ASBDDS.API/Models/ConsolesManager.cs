@@ -124,12 +124,14 @@ namespace ASBDDS.API.Models
             return _units.Any(u => u.ConsoleId == console.Id);
         }
         
-        public List<ConsoleOutput> GetConsoleOutput(DbConsole console)
+        public List<ConsoleOutput> GetConsoleOutput(DbConsole console, DateTime? start = null)
         {
             List<ConsoleOutput> list = new List<ConsoleOutput>();
             var unit = _units.FirstOrDefault(o => o.ConsoleId == console.Id);
             if (unit != null)
                 list = unit.Output;
+            if (start != null)
+                list = list.Where(l => l.DateUtc > start.Value.ToUniversalTime()).ToList();
             return list;
         }
 

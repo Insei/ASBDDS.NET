@@ -279,7 +279,7 @@ namespace ASBDDS.API.Controllers
         }
         
         [HttpGet("{id}/output")]
-        public async Task<ApiResponse<List<ConsoleOutputDto>>> ConsoleOutput(Guid id, [FromQuery] DateTime start = new DateTime())
+        public async Task<ApiResponse<List<ConsoleOutputDto>>> ConsoleOutput(Guid id, [FromQuery] DateTime? start = null)
         {
             var resp = new ApiResponse<List<ConsoleOutputDto>>();
             try
@@ -292,7 +292,7 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
 
-                resp.Data = _consolesManager.GetConsoleOutput(console).Select(output => _mapper.Map<ConsoleOutputDto>(output)).ToList();
+                resp.Data = _consolesManager.GetConsoleOutput(console, start).Select(output => _mapper.Map<ConsoleOutputDto>(output)).ToList();
             }
             catch (Exception e)
             {
