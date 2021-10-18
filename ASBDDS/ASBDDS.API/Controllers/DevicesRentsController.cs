@@ -12,6 +12,7 @@ using ASBDDS.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Primitives;
 using ASBDDS.API.Models.Utils;
+using ASBDDS.Shared.Dtos;
 using ASBDDS.Shared.Helpers;
 using ASBDDS.Shared.Interfaces;
 using Microsoft.AspNetCore.Identity;
@@ -26,10 +27,15 @@ namespace ASBDDS.API.Controllers
     {
         private readonly DataDbContext _context;
         private readonly DevicePowerControlManager _devicePowerControl;
-        public DevicesRentsController(DataDbContext context, DevicePowerControlManager devicePowerControl)
+        private readonly ConsolesManager _consolesManager;
+        
+        public DevicesRentsController(DataDbContext context, 
+            DevicePowerControlManager devicePowerControl, 
+            ConsolesManager consolesManager)
         {
             _context = context;
             _devicePowerControl = devicePowerControl;
+            _consolesManager = consolesManager;
         }
 
         /// <summary>
@@ -383,6 +389,53 @@ namespace ASBDDS.API.Controllers
                 
                 _context.Entry(device).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                resp.Status.Code = 1;
+                resp.Status.Message = e.Message;
+            }
+            return resp;
+        }
+        
+        /// <summary>
+        /// Get device console output by rent
+        /// </summary>
+        /// <param name="id">device rent id</param>
+        /// <param name="projectId">project id</param>
+        /// <returns></returns>
+        [HttpGet("{id}/console/output")]
+        public async Task<ApiResponse<List<ConsoleOutputDto>>> GetDeviceConsoleOutputByRent([FromHeader(Name="ProjectId")][Required] Guid projectId, Guid id)
+        {
+            var resp = new ApiResponse<List<ConsoleOutputDto>>();
+            try
+            {
+                var project = await _context.Projects.FindAsync(projectId);
+                if (project == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "Project not found";
+                    return resp;
+                }
+                var deviceRent = await _context.DeviceRents.
+                    Where(dr => dr.Project == project && dr.Closed == null && dr.Id == id).
+                    Include( dr => dr.Device).ThenInclude(d => d.Console).FirstOrDefaultAsync();
+                
+                if(deviceRent == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "device rent not found";
+                    return resp;
+                }
+
+                if (deviceRent.Device.Console == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "the device does not have a console";
+                    return resp;
+                }
+                var outputs = _consolesManager.GetConsoleOutput(deviceRent.Device.Console, deviceRent.Created);
+                resp.Data = outputs.Select(output => new ConsoleOutputDto() { DateUtc = output.DateUtc, Text = output.Text}).ToList();
             }
             catch (Exception e)
             {
