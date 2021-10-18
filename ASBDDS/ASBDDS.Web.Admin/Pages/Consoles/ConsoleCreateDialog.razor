@@ -18,6 +18,7 @@
                     }
                 }
             </MudSelect>
+            <MudCheckBox @bind-Checked="@createConsoleDto.Disabled" Dense="false" Color="Color.Primary" Label="Disabled"></MudCheckBox>
             @if (createConsoleDto.Type == DbConsoleType.Serial)
             {
                 <MudDivider Class="mt-2 mb-1"></MudDivider>

@@ -13,12 +13,16 @@
         <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
     </ToolBarContent>
     <HeaderContent>
+        <MudTh></MudTh>
+        <MudTh></MudTh>
         <MudTh>Id</MudTh>
         <MudTh>Name</MudTh>
         <MudTh>Type</MudTh>
         <MudTh></MudTh>
     </HeaderContent>
     <RowTemplate>
+        <MudTd DataLabel="Disabled"><MudCheckBox @bind-Checked="@context.Disabled" Dense="false" Disabled="true" Label="Disabled" ></MudCheckBox></MudTd>
+        <MudTd DataLabel="IsOpen"><MudCheckBox @bind-Checked="@context.IsListening" Dense="false" Disabled="true" Label="Is listening"></MudCheckBox></MudTd>
         <MudTd DataLabel="Id">@context.Id</MudTd>
         <MudTd DataLabel="Name">@context.Name</MudTd>
         <MudTd DataLabel="Type">@context.Type</MudTd>
@@ -26,6 +30,9 @@
             <MudMenu Label="Options" Size="Size.Small" Dense="true" FullWidth="true" Direction="Direction.Start">
                 <MudMenuItem OnClick="@(() => ShowUpdateDialog(context))">Edit</MudMenuItem>
                 <MudMenuItem OnClick="@(() => Delete(context))">Delete</MudMenuItem>
+                <MudMenuItem OnClick="@(() => Start(context))">Start</MudMenuItem>
+                <MudMenuItem OnClick="@(() => Stop(context))">Stop</MudMenuItem>
+                <MudMenuItem OnClick="@(() => ShowOutputDialog(context))">Output</MudMenuItem>
             </MudMenu>
         </MudTd>
     </RowTemplate>
@@ -95,10 +102,57 @@
         }
     }
     
+    private async void ShowOutputDialog(AdminDbConsoleDto console)
+    {
+        var parameters = new DialogParameters { ["DbConsoleDto"] = console };
+        var dialogOptions = new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true};
+        var dialog = _dialogService.Show<ConsoleOutputDialog>("Console output", parameters, dialogOptions);
+    }
+    
     private async Task Delete(AdminDbConsoleDto console)
     {
         var apiResp = await _httpClient.Delete<ApiResponse>(
             "api/admin/consoles/" + console.Id, 
+            null);
+        
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            if (apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+        {
+            await GetDataFromServer();
+            StateHasChanged();
+        }
+    }
+    
+    private async Task Start(AdminDbConsoleDto console)
+    {
+        var apiResp = await _httpClient.Post<ApiResponse>(
+            "api/admin/consoles/" + console.Id + "/start", 
+            null);
+        
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            if (apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+        {
+            await GetDataFromServer();
+            StateHasChanged();
+        }
+    }
+    
+    private async Task Stop(AdminDbConsoleDto console)
+    {
+        var apiResp = await _httpClient.Post<ApiResponse>(
+            "api/admin/consoles/" + console.Id + "/stop", 
             null);
         
         if (apiResp == null || apiResp.Status.Code != 0)

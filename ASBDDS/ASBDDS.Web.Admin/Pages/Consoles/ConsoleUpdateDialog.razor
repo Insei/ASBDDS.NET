@@ -18,6 +18,7 @@
                     }
                 }
             </MudSelect>
+            <MudCheckBox @bind-Checked="@_consoleUpdateDto.Disabled" Dense="false" Color="Color.Primary" Label="Disabled"></MudCheckBox>
             @if (_consoleUpdateDto.Type == DbConsoleType.Serial)
             {
                 <MudDivider Class="mt-2 mb-1"></MudDivider>
@@ -86,6 +87,7 @@
         {
             Name = DbConsoleDto.Name,
             Type = DbConsoleDto.Type,
+            Disabled = DbConsoleDto.Disabled,
             SerialSettings =
             new AdminSerialPortSettingsUpdateDto() {
                 Handshake = DbConsoleDto.SerialSettings.Handshake,
