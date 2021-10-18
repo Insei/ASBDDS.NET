@@ -4,7 +4,7 @@ namespace ASBDDS.Shared.Dtos
 {
     public class ConsoleOutputDto
     {
-        public DateTime Date { get; set; }
+        public DateTime DateUtc { get; set; }
         public string Text { get; set; }
     }
 }

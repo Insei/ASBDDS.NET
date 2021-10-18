@@ -11,6 +11,7 @@ namespace ASBDDS.Shared.Dtos.DbConsole
         public string Name { get; set; }
         public DbConsoleType Type { get; set; }
         public bool Disabled { get; set; }
+        public bool IsListening { get; set; }
         public AdminSerialPortSettingsDto SerialSettings { get; set; }
     }
 }

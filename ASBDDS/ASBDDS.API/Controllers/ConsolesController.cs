@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using ASBDDS.API.Models;
+using ASBDDS.Shared.Dtos;
 using ASBDDS.Shared.Dtos.DbConsole;
 using ASBDDS.Shared.Models.Database.DataDb;
 using ASBDDS.Shared.Models.Responses;
@@ -20,11 +21,13 @@ namespace ASBDDS.API.Controllers
     {
         private readonly DataDbContext _context;
         private readonly IMapper _mapper;
+        private readonly ConsolesManager _consolesManager;
 
-        public ConsolesController(DataDbContext context, IMapper mapper)
+        public ConsolesController(DataDbContext context, ConsolesManager consolesManager, IMapper mapper)
         {
             _context = context;
             _mapper = mapper;
+            _consolesManager = consolesManager;
         }
         
         /// <summary>
@@ -37,8 +40,15 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<List<AdminDbConsoleDto>>();
             try
             {
+                
                 var consoles = await _context.Consoles.Include(c => c.SerialSettings).ToListAsync();
-                resp.Data = consoles.Select(console => _mapper.Map<AdminDbConsoleDto>(console)).ToList();
+                resp.Data = new List<AdminDbConsoleDto>();
+                foreach (var console in consoles)
+                {
+                    var consoleDto = _mapper.Map<AdminDbConsoleDto>(console);
+                    consoleDto.IsListening = _consolesManager.IsListening(console);
+                    resp.Data.Add(consoleDto);
+                }
             }
             catch(Exception e)
             {
@@ -66,6 +76,7 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
                 resp.Data = _mapper.Map<AdminDbConsoleDto>(console);
+                resp.Data.IsListening = _consolesManager.IsListening(console);
             }
             catch(Exception e)
             {
@@ -107,6 +118,13 @@ namespace ASBDDS.API.Controllers
                 await _context.SaveChangesAsync();
                 
                 resp.Data = _mapper.Map<AdminDbConsoleDto>(console);
+                
+                if(!_consolesManager.Exist(console))
+                    _consolesManager.Add(console);
+                else
+                    _consolesManager.Update(console);
+
+                resp.Data.IsListening = _consolesManager.IsListening(console);
             }
             catch (Exception e)
             {
@@ -144,7 +162,15 @@ namespace ASBDDS.API.Controllers
                 }
                 _mapper.Map(consoleUpdateDto, console);
                 await _context.SaveChangesAsync();
+                
                 resp.Data = _mapper.Map<AdminDbConsoleDto>(console);
+                
+                if(!_consolesManager.Exist(console))
+                    _consolesManager.Add(console);
+                else
+                    _consolesManager.Update(console);
+
+                resp.Data.IsListening = _consolesManager.IsListening(console);
             }
             catch (Exception e)
             {
@@ -171,9 +197,102 @@ namespace ASBDDS.API.Controllers
 
                 if (console.SerialSettings != null)
                     _context.SerialPortsSettings.Remove(console.SerialSettings);
-                
+
                 _context.Consoles.Remove(console);
                 await _context.SaveChangesAsync();
+                
+                if(_consolesManager.Exist(console))
+                    _consolesManager.Remove(console);
+            }
+            catch (Exception e)
+            {
+                resp.Status.Code = 1;
+                resp.Status.Message = e.Message;
+            }
+            return resp;
+        }
+        
+        [HttpPost("{id}/start")]
+        public async Task<ApiResponse> ConsoleStart(Guid id)
+        {
+            var resp = new ApiResponse();
+            try
+            {
+                var console = await _context.Consoles.Include(c => c.SerialSettings).FirstOrDefaultAsync(c => c.Id == id);
+                if (console == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "Not found";
+                    return resp;
+                }
+                
+                if(!_consolesManager.Exist(console))
+                    _consolesManager.Add(console);
+                
+                if (_consolesManager.IsListening(console))
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "already is listening";
+                    return resp;
+                }
+                _consolesManager.StartListening(console);
+            }
+            catch (Exception e)
+            {
+                resp.Status.Code = 1;
+                resp.Status.Message = e.Message;
+            }
+            return resp;
+        }
+        
+        [HttpPost("{id}/stop")]
+        public async Task<ApiResponse> ConsoleStop(Guid id)
+        {
+            var resp = new ApiResponse();
+            try
+            {
+                var console = await _context.Consoles.Include(c => c.SerialSettings).FirstOrDefaultAsync(c => c.Id == id);
+                if (console == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "Not found";
+                    return resp;
+                }
+                
+                if(!_consolesManager.Exist(console))
+                    _consolesManager.Add(console);
+                
+                if (!_consolesManager.IsListening(console))
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "already is not listening";
+                    return resp;
+                }
+                _consolesManager.StopListening(console);
+            }
+            catch (Exception e)
+            {
+                resp.Status.Code = 1;
+                resp.Status.Message = e.Message;
+            }
+            return resp;
+        }
+        
+        [HttpGet("{id}/output")]
+        public async Task<ApiResponse<List<ConsoleOutputDto>>> ConsoleOutput(Guid id, [FromQuery] DateTime start = new DateTime())
+        {
+            var resp = new ApiResponse<List<ConsoleOutputDto>>();
+            try
+            {
+                var console = await _context.Consoles.Include(c => c.SerialSettings).FirstOrDefaultAsync(c => c.Id == id);
+                if (console == null)
+                {
+                    resp.Status.Code = 1;
+                    resp.Status.Message = "Not found";
+                    return resp;
+                }
+
+                resp.Data = _consolesManager.GetConsoleOutput(console).Select(output => _mapper.Map<ConsoleOutputDto>(output)).ToList();
             }
             catch (Exception e)
             {

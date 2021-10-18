@@ -31,12 +31,14 @@ namespace ASBDDS.NET
 
             DhcpServer = DHCPServerHelper.Create(configuration);
             TftpServer = new TFTPServer(dnetIpStr, 69, DhcpServer);
+            ConsolesManager = new ConsolesManager();
         }
 
         public IConfiguration Configuration { get; }
         private TFTPServer TftpServer { get; }
         private DHCPServer DhcpServer { get; }
         private AuthOptions AuthOptions { get; }
+        private ConsolesManager ConsolesManager { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -49,6 +51,7 @@ namespace ASBDDS.NET
             services.AddSingleton(_ => TftpServer);
             services.AddSingleton(_ => DhcpServer);
             services.AddSingleton(_ => AuthOptions);
+            services.AddSingleton(_ => ConsolesManager);
             services.AddScoped<DevicePowerControlManager>();
             services.AddAuthentication(option =>  
                 {  
@@ -113,7 +116,7 @@ namespace ASBDDS.NET
                     }  
                 });
             });
-            services.AddAutoMapper(typeof(DbConsoleMappings), typeof(SerialPortSettingsMappings));
+            services.AddAutoMapper(typeof(DbConsoleMappings), typeof(SerialPortSettingsMappings), typeof(ConsoleOutputMappings));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
