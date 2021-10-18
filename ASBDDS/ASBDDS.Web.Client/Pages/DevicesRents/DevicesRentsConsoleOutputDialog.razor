@@ -1,0 +1,61 @@
+﻿@using ASBDDS.Shared.Models.Responses
+@using ASBDDS.Shared.Dtos.DbConsole
+@using ASBDDS.Shared.Dtos.SerialPortSettings
+@using Microsoft.AspNetCore.Components
+@using ASBDDS.Shared.Dtos
+@inject IHttpService _httpClient
+@inject IDialogService _dialogService
+
+<MudDialog DisableSidePadding="true">
+    <DialogContent>
+        <MudContainer Style="max-height: 300px; overflow-y: scroll">
+            @if (Loading)
+            {
+                <MudProgressCircular Indeterminate="true"></MudProgressCircular>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@ConsoleLog</MudText>
+            }
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+<SnackBars @ref="_snackBars"></SnackBars>
+@code {
+    private IEnumerable<ConsoleOutputDto> _output = new List<ConsoleOutputDto>();
+    private bool Loading { get; set; } = false;
+    private string ConsoleLog { get; set; }
+
+    [CascadingParameter] 
+    MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public DeviceRentUserResponse DeviceRent { get; set; }
+
+    private SnackBars _snackBars;
+
+    void Cancel() => MudDialog.Cancel();
+
+    protected override async void OnInitialized()
+    {
+        Loading = true;
+        var apiResp = await _httpClient.Get<ApiResponse<List<ConsoleOutputDto>>>("api/devices/rents/" + DeviceRent.Id + "/console/output");
+        if (apiResp == null || apiResp.Status.Code != 0)
+        {
+            if (apiResp != null)
+                _snackBars.ShowError(apiResp.Status.Message);
+            else
+                _snackBars.ShowError("Unhandled error");
+        }
+        else
+        {
+            _output = apiResp.Data.Select(o => new ConsoleOutputDto(){DateUtc = o.DateUtc.ToLocalTime(), Text = o.Text});
+            foreach (var mess in _output)
+                ConsoleLog += mess.Text + "\n";
+            Loading = false;
+            StateHasChanged();
+        }
+    }
+}

@@ -41,6 +41,7 @@
                     <MudMenuItem OnClick="@(() => DeleteDeviceRent(context))">Release</MudMenuItem>
                     <MudMenuItem OnClick="@(() => PowerOffDeviceByRent(context))">Power Off</MudMenuItem>
                     <MudMenuItem OnClick="@(() => PowerOnDeviceByRent(context))">Power On</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => ShowConsoleOutputDialog(context))">Console</MudMenuItem>
                 </MudMenu>
             </MudTd>
         }
@@ -102,6 +103,13 @@
             _loading = true;
             await UpdateTableData(true);
         }
+    }
+    
+    private async void ShowConsoleOutputDialog(DeviceRentUserResponse device)
+    {
+        var parameters = new DialogParameters { ["DeviceRent"] = device };
+        var dialogOptions = new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true};
+        var dialog = _dialogService.Show<DevicesRentsConsoleOutputDialog>("Console log", parameters, dialogOptions);
     }
 
     private async void DeleteDeviceRent(DeviceRentUserResponse device)
