@@ -5,29 +5,30 @@
 @using ASBDDS.Shared.Dtos
 @inject IHttpService _httpClient
 @inject IDialogService _dialogService
+@inject IJSRuntime _js
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
-        <MudContainer Style="max-height: 300px; overflow-y: scroll">
-            @if (Loading)
-            {
-                <MudProgressCircular Indeterminate="true"></MudProgressCircular>
-            }
-            else
-            {
-                <MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@ConsoleLog</MudText>
-            }
-        </MudContainer>
+        <MudTable Items="@_output" Dense="@true" Hover="@true" Height="350px" Breakpoint="Breakpoint.Sm" Virtualize="true" FixedHeader="true">
+            <HeaderContent>
+                <MudTh>Message</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="message">@context.Text</MudTd>
+            </RowTemplate>
+        </MudTable>
     </DialogContent>
     <DialogActions>
+        <MudButton OnClick="@(() => UpdateData(true))">Update</MudButton>
         <MudButton Color="Color.Primary" OnClick="Cancel">Close</MudButton>
     </DialogActions>
 </MudDialog>
 <SnackBars @ref="_snackBars"></SnackBars>
+
 @code {
+
     private IEnumerable<ConsoleOutputDto> _output = new List<ConsoleOutputDto>();
-    private bool Loading { get; set; } = false;
-    private string ConsoleLog { get; set; }
+    private bool Loading { get; set; }
 
     [CascadingParameter] 
     MudDialogInstance MudDialog { get; set; }
@@ -38,7 +39,7 @@
 
     void Cancel() => MudDialog.Cancel();
 
-    protected override async void OnInitialized()
+    private async Task<int> UpdateData(bool StateChanged = false)
     {
         Loading = true;
         var apiResp = await _httpClient.Get<ApiResponse<List<ConsoleOutputDto>>>("api/devices/rents/" + DeviceRent.Id + "/console/output");
@@ -52,10 +53,17 @@
         else
         {
             _output = apiResp.Data.Select(o => new ConsoleOutputDto(){DateUtc = o.DateUtc.ToLocalTime(), Text = o.Text});
-            foreach (var mess in _output)
-                ConsoleLog += mess.Text + "\n";
-            Loading = false;
-            StateHasChanged();
         }
+        
+        Loading = false;
+        if(StateChanged)
+            StateHasChanged();
+        
+        return 0;
+    }
+
+    protected override async void OnInitialized()
+    {
+        await UpdateData(true);
     }
 }
