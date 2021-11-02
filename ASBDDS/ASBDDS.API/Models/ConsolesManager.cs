@@ -21,6 +21,8 @@ namespace ASBDDS.API.Models
         private SerialPort SerialPort { get; set; }
         public List<ConsoleOutput> Output { get; }
 
+        private string allOutput { get; set; }
+
         public ConsoleManagerUnit(DbConsole console)
         {
             Output = new List<ConsoleOutput>();
@@ -31,10 +33,16 @@ namespace ASBDDS.API.Models
         private void SerialDataReceived(object sender,
             SerialDataReceivedEventArgs e)
         {
+            var utcNow = DateTime.Now.ToUniversalTime();
             var sp = (SerialPort)sender;
-            var text = sp.ReadExisting();
-            if(text.Trim().Length > 0)
-                Output.Add(new ConsoleOutput() { DateUtc = DateTime.Now.ToUniversalTime(), Text = text});
+            allOutput += sp.ReadExisting();
+            var textStrings = allOutput.Split(Environment.NewLine, StringSplitOptions.TrimEntries);
+            allOutput = textStrings.Last();
+            for (int i = 0; i < textStrings.Length-1; i++)
+            {
+                if(textStrings[i].Length > 0)
+                    Output.Add(new ConsoleOutput() { DateUtc = utcNow, Text = textStrings[i]});
+            }
         }
         
         private void AddSerialPort()
