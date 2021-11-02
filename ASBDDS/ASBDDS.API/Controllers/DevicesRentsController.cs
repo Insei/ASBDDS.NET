@@ -15,6 +15,7 @@ using ASBDDS.API.Models.Utils;
 using ASBDDS.Shared.Dtos;
 using ASBDDS.Shared.Helpers;
 using ASBDDS.Shared.Interfaces;
+using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 
 namespace ASBDDS.API.Controllers
@@ -28,14 +29,17 @@ namespace ASBDDS.API.Controllers
         private readonly DataDbContext _context;
         private readonly DevicePowerControlManager _devicePowerControl;
         private readonly ConsolesManager _consolesManager;
-        
+        private readonly IMapper _mapper;
+
         public DevicesRentsController(DataDbContext context, 
             DevicePowerControlManager devicePowerControl, 
-            ConsolesManager consolesManager)
+            ConsolesManager consolesManager,
+            IMapper mapper)
         {
             _context = context;
             _devicePowerControl = devicePowerControl;
             _consolesManager = consolesManager;
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -434,8 +438,8 @@ namespace ASBDDS.API.Controllers
                     resp.Status.Message = "the device does not have a console";
                     return resp;
                 }
-                var outputs = _consolesManager.GetConsoleOutput(deviceRent.Device.Console, deviceRent.Created);
-                resp.Data = outputs.Select(output => new ConsoleOutputDto() { DateUtc = output.DateUtc, Text = output.Text}).ToList();
+                resp.Data = _consolesManager.GetConsoleOutput(deviceRent.Device.Console, deviceRent.Created)
+                    .Select(output => _mapper.Map<ConsoleOutputDto>(output)).TakeLast(500).ToList();
             }
             catch (Exception e)
             {

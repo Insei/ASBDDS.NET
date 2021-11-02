@@ -292,7 +292,7 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
 
-                resp.Data = _consolesManager.GetConsoleOutput(console, start).Select(output => _mapper.Map<ConsoleOutputDto>(output)).ToList();
+                resp.Data = _consolesManager.GetConsoleOutput(console, start).Select(output => _mapper.Map<ConsoleOutputDto>(output)).TakeLast(500).ToList();
             }
             catch (Exception e)
             {

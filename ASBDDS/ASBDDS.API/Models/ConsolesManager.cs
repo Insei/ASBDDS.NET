@@ -32,7 +32,9 @@ namespace ASBDDS.API.Models
             SerialDataReceivedEventArgs e)
         {
             var sp = (SerialPort)sender;
-            Output.Add(new ConsoleOutput() { DateUtc = DateTime.Now.ToUniversalTime(), Text = sp.ReadExisting()});
+            var text = sp.ReadExisting();
+            if(text.Trim().Length > 0)
+                Output.Add(new ConsoleOutput() { DateUtc = DateTime.Now.ToUniversalTime(), Text = text});
         }
         
         private void AddSerialPort()
