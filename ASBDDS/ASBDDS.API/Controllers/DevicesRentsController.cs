@@ -227,10 +227,13 @@ namespace ASBDDS.API.Controllers
                 BootloaderSetupHelper.MakeFirmware(deviceRent.Device);
                 BootloaderSetupHelper.MakeUboot(deviceRent.Device, "provisioning");
                 BootloaderSetupHelper.MakeIpxe(deviceRent.Device);
-                deviceRent.Device.StateEnum = DeviceState.CREATING;
+                // We setup Creating state, after ipxe.cfg url is called this state change to provisioning
+                deviceRent.Device.MachineState = DeviceMachineState.Creating;
 
-                // Enable POE on port
                 _devicePowerControl.SwitchPower(deviceRent.Device, DevicePowerAction.PowerOn);
+                
+                deviceRent.Device.PowerState = DevicePowerState.PowerOn;
+                _context.Entry(deviceRent.Device).State = EntityState.Modified;
                 
                 _context.DeviceRents.Add(deviceRent);
                 await _context.SaveChangesAsync();
@@ -284,7 +287,7 @@ namespace ASBDDS.API.Controllers
                 var device = deviceRent.Device;
                 _devicePowerControl.SwitchPower(device, DevicePowerAction.Reboot);
 
-                device.StateEnum = DeviceState.ERASING;
+                device.MachineState = DeviceMachineState.Erasing;
                 
                 _context.Entry(device).State = EntityState.Modified;
                 _context.Entry(deviceRent).State = EntityState.Modified;
@@ -329,7 +332,8 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
 
-                if (deviceRent.Device.StateEnum is DeviceState.ERASING or DeviceState.CREATING or DeviceState.PROVISIONING or DeviceState.POWEROFF)
+                if ((deviceRent.Device.MachineState is DeviceMachineState.Erasing or DeviceMachineState.Creating or DeviceMachineState.Provisioning) 
+                    || deviceRent.Device.PowerState == DevicePowerState.PowerOff)
                 {
                     resp.Status.Code = 1;
                     resp.Status.Message = "You cannot turn off the device in this state";
@@ -337,7 +341,7 @@ namespace ASBDDS.API.Controllers
                 }
                 var device = deviceRent.Device;
                 _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOff);
-                device.StateEnum = DeviceState.POWEROFF;
+                device.PowerState = DevicePowerState.PowerOff;
                 
                 _context.Entry(device).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
@@ -380,7 +384,7 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
 
-                if (deviceRent.Device.StateEnum != DeviceState.POWEROFF)
+                if (deviceRent.Device.PowerState != DevicePowerState.PowerOff)
                 {
                     resp.Status.Code = 1;
                     resp.Status.Message = "You cannot turn on the device in this state";
@@ -389,7 +393,7 @@ namespace ASBDDS.API.Controllers
                 
                 var device = deviceRent.Device;
                 _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOn);
-                device.StateEnum = DeviceState.POWERON;
+                device.PowerState = DevicePowerState.PowerOn;
                 
                 _context.Entry(device).State = EntityState.Modified;
                 await _context.SaveChangesAsync();

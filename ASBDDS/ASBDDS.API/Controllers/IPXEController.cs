@@ -51,7 +51,7 @@ namespace ASBDDS.API.Controllers
                 _context.Entry(deviceRent).State = EntityState.Modified;
             }
 
-            device.StateEnum = DeviceState.POWEROFF;
+            device.PowerState = DevicePowerState.PowerOff;
             _context.Entry(device).State = EntityState.Modified;
             
             await _context.SaveChangesAsync();
@@ -62,8 +62,7 @@ namespace ASBDDS.API.Controllers
 
         private async Task<Stream> OnProvisionComplete(Device device)
         {
-            
-            device.StateEnum = DeviceState.POWERON;
+            device.MachineState = DeviceMachineState.Ready;
             
             BootloaderSetupHelper.RemoveDeviceDirectory(device);
             BootloaderSetupHelper.MakeFirmware(device);
@@ -89,7 +88,7 @@ namespace ASBDDS.API.Controllers
         
         private async Task<Stream> OnCreateComplete(Device device)
         {
-            device.StateEnum = DeviceState.PROVISIONING;
+            device.MachineState = DeviceMachineState.Provisioning;
             _context.Entry(device).State = EntityState.Modified;
             
             await _context.SaveChangesAsync();
@@ -109,21 +108,18 @@ namespace ASBDDS.API.Controllers
             Stream ipxeConfigStream = null;
             if (device != null)
             {
-                switch (device.StateEnum)
+                switch (device.MachineState)
                 {
-                    case DeviceState.CREATING:
+                    case DeviceMachineState.Creating:
                         ipxeConfigStream = await OnCreateComplete(device);
                         break;
-                    case DeviceState.PROVISIONING:
+                    case DeviceMachineState.Provisioning:
                         ipxeConfigStream = await OnProvisionComplete(device);
                         break;
-                    case DeviceState.POWERON:
+                    case DeviceMachineState.IPXEOnly:
                         ipxeConfigStream = await GetUserIpxeCfgStream(device);
                         break;
-                    case DeviceState.POWEROFF:
-                        ipxeConfigStream = await GetUserIpxeCfgStream(device);
-                        break;
-                    case DeviceState.ERASING:
+                    case DeviceMachineState.Erasing:
                         // power off device
                         ipxeConfigStream = await OnEraseComplete(device);
                         break;

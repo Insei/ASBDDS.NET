@@ -36,9 +36,13 @@ namespace ASBDDS.Shared.Models.Responses
         /// </summary>
         public Guid SwitchPortId { get; set; }
         /// <summary>
-        /// Device state
+        /// Device power state
         /// </summary>
-        public string State { get; set; }
+        public DevicePowerState PowerState { get; set; }
+        /// <summary>
+        /// Device machine state
+        /// </summary>
+        public DeviceMachineState MachineState { get; set; }
         /// <summary>
         /// Power control type
         /// </summary>
@@ -55,7 +59,8 @@ namespace ASBDDS.Shared.Models.Responses
             Serial = device.Serial;
             MacAddress = device.MacAddress;
             SwitchPortId = device.SwitchPort.Id;
-            State = device.StateEnum.ToString().ToLower();
+            PowerState = device.PowerState;
+            MachineState = device.MachineState;
             PowerControlType = device.PowerControlType;
             ConsoleId = device.Console?.Id;
         }

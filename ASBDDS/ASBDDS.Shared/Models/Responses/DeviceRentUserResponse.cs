@@ -47,8 +47,14 @@ namespace ASBDDS.Shared.Models.Responses
         /// Link to IPXE network bootloader
         /// </summary>
         public string IPXEUrl { get; set; }
-
-        public string DeviceState { get; set; }
+        /// <summary>
+        /// Device power state
+        /// </summary>
+        public DevicePowerState PowerState { get; set; }
+        /// <summary>
+        /// Device machine state
+        /// </summary>
+        public DeviceMachineState MachineState { get; set; }
         public string Status { get; set; }
 
         public DeviceRentUserResponse(DeviceRent deviceRent)
@@ -65,7 +71,8 @@ namespace ASBDDS.Shared.Models.Responses
             IPXEUrl = deviceRent.IpxeUrl;
             Serial = deviceRent.Device.Serial;
             MacAddress = deviceRent.Device.MacAddress;
-            DeviceState = deviceRent.Device.StateEnum.ToString();
+            PowerState = device.PowerState;
+            MachineState = device.MachineState;
             Status = deviceRent.Status.ToString().ToLower();
         }
 

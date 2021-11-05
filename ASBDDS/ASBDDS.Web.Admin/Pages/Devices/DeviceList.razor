@@ -32,7 +32,8 @@
                 <MudMenuItem OnClick="@(() => PowerOnDevice(context))">Power on</MudMenuItem>
             </MudMenu>
         </MudTd>
-        <MudTd DataLabel="State">@context.State</MudTd>
+        <MudTd DataLabel="State">@context.MachineState</MudTd>
+        <MudTd DataLabel="Power">@context.PowerState</MudTd>
         <MudTd DataLabel="Id">@context.Id</MudTd>
         <MudTd DataLabel="Name">@context.Name</MudTd>
         <MudTd DataLabel="Manufacturer">@context.Manufacturer</MudTd>

@@ -173,7 +173,7 @@ namespace ASBDDS.API.Controllers
                     Created = DateTime.Now,
                     Updated = DateTime.Now,
                     Serial = deviceReq.Serial,
-                    StateEnum = DeviceState.POWEROFF,
+                    PowerState = DevicePowerState.PowerOff,
                     SwitchPort = _switchPort,
                     MacAddress = deviceReq.MacAddress,
                     Model = deviceReq.Model,
@@ -279,12 +279,12 @@ namespace ASBDDS.API.Controllers
                 if (enable)
                 {
                     _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOn);
-                    device.StateEnum = DeviceState.POWERON;
+                    device.PowerState = DevicePowerState.PowerOn;
                 }
                 else
                 {
                     _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOff);
-                    device.StateEnum = DeviceState.POWEROFF;
+                    device.PowerState = DevicePowerState.PowerOff;
                 }
 
                 _context.Entry(device).State = EntityState.Modified;

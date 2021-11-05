@@ -8,7 +8,8 @@ namespace ASBDDS.Shared.Models.Database.DataDb
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
-        public DeviceState StateEnum { get; set; }
+        public DeviceMachineState MachineState { get; set; }
+        public DevicePowerState PowerState { get; set; }
         public string Manufacturer { get; set; }
         public string Model { get; set; }
         public string Serial { get; set; }

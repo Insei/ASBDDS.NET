@@ -34,7 +34,8 @@
             <MudTd DataLabel="IPXEUrl">@context.IPXEUrl</MudTd>
             <MudTd DataLabel="Serial">@context.Serial</MudTd>
             <MudTd DataLabel="MacAddress">@context.MacAddress</MudTd>
-            <MudTd DataLabel="DeviceState">@context.DeviceState</MudTd>
+            <MudTd DataLabel="Power">@context.PowerState</MudTd>
+            <MudTd DataLabel="State">@context.MachineState</MudTd>
             <MudTd Style="white-space: nowrap; width: 1%;" DataLabel="Options">
                 <MudMenu Label="Options" Size="Size.Small" Dense="true" FullWidth="true" Direction="Direction.Start">
                     <MudMenuItem OnClick="@(() => ShowUpdateDialog(context))">Edit</MudMenuItem>
