@@ -9,6 +9,7 @@ namespace ASBDDS.NET.MappingProfiles
         public ConsoleOutputMappings()
         {
             CreateMap<ConsoleOutput, ConsoleOutputDto>().ReverseMap();
+            
         }
     }
 }
