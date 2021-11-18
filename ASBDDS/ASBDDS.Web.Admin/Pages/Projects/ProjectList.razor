@@ -1,16 +1,15 @@
 ﻿@page "/projects"
-@using System.Net.Http.Json
 @using ASBDDS.Shared.Models.Responses
-@inject IHttpService httpClient
-@inject IDialogService DialogService
+@inject IHttpService _httpClient
+@inject IDialogService _dialogService
 
-<MudTable Items="@Projects" Dense="@dense" Hover="@hover" Loading="@_loading" Bordered="@bordered" Striped="@striped" Filter="new Func<ProjectAdminResponse,bool>(FilterFunc1)" @bind-SelectedItem="selectedItem1">
+<MudTable Items="@_projects" Dense="@true" Hover="@true" Loading="@_loading" Bordered="@true" Striped="@true" Filter="new Func<ProjectAdminResponse,bool>(FilterFunc)">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Projects List</MudText>
         <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
         <MudText Class="small">Add Project</MudText>
         <MudSpacer />
-        <MudTextField @bind-Value="searchString1" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
     </ToolBarContent>
     <HeaderContent>
         <MudTh>Id</MudTh>
@@ -29,7 +28,7 @@
         <MudTd DataLabel="Disabled">@context.Disabled</MudTd>
         <MudTd Style="white-space: nowrap; width: 1%;">
             <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => ShowDevices(context.Id.ToString()))">
-                @((ShowDeviceLimits.GetValueOrDefault(context.Id.ToString()) == true)? "Hide" : "Show") Device Limits
+                @(_showDeviceLimits.GetValueOrDefault(context.Id.ToString())? "Hide" : "Show") Device Limits
             </MudButton>
         </MudTd>
         <MudTd Style="white-space: nowrap; width: 1%;" DataLabel="Options">
@@ -40,7 +39,7 @@
         </MudTd>
     </RowTemplate>
     <ChildRowContent>
-        @if (ShowDeviceLimits.GetValueOrDefault(context.Id.ToString()))
+        @if (_showDeviceLimits.GetValueOrDefault(context.Id.ToString()))
         {
             <MudTr>
                 <td colspan="6">
@@ -75,104 +74,90 @@
 <SnackBars @ref="_snackBars"></SnackBars>
 @code {
     private bool _loading;
-    private bool dense = true;
-    private bool hover = true;
-    private bool striped = true;
-    private bool bordered = true;
-    private string searchString1 = "";
-    private ProjectAdminResponse selectedItem1 = null;
-    private HashSet<ProjectAdminResponse>
-    selectedItems = new HashSet<ProjectAdminResponse>();
+    private string _searchString = "";
     private SnackBars _snackBars;
 
-    private IEnumerable<ProjectAdminResponse> Projects = new List<ProjectAdminResponse>();
-    private Dictionary<string, bool> ShowDeviceLimits = new Dictionary<string, bool>();
+    private IEnumerable<ProjectAdminResponse> _projects = new List<ProjectAdminResponse>();
+    private readonly Dictionary<string, bool> _showDeviceLimits = new Dictionary<string, bool>();
 
     protected override async Task OnInitializedAsync()
     {
-        await UpdateTableData();
+        await GetListDataFromServer();
     }
 
-    private async Task<int> UpdateTableData(bool StateChanged = false)
+    private async Task GetListDataFromServer(bool stateHasChanged = false)
     {
-        var responseBody = await httpClient.Get<ApiResponse<List<ProjectAdminResponse>>>("api/admin/projects/");
-
-        ShowDeviceLimits.Clear();
-        foreach (var element in responseBody.Data)
-        {
-            ShowDeviceLimits.Add(element.Id.ToString(), false);
-        }
-        Projects = responseBody.Data;
-
+        _loading = true;
+        await _httpClient.Get<List<ProjectAdminResponse>>("api/admin/projects/",
+            async response =>
+            {
+                await Task.Run(action: () => 
+                {
+                    _showDeviceLimits.Clear();
+                    foreach (var element in response.Data)
+                    {
+                        _showDeviceLimits.Add(element.Id.ToString(), false);
+                    }
+                    _projects = response.Data;
+                });
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
+        
         _loading = false;
-        if (StateChanged) StateHasChanged();
-        return 0;
+        if (stateHasChanged) 
+            StateHasChanged();
     }
 
     private void ShowDevices(string id)
     {
-
-        ShowDeviceLimits[id] = ShowDeviceLimits[id] == true ? false : true;
+        _showDeviceLimits[id] = _showDeviceLimits[id] != true;
     }
 
     private async void ShowCreateDialog()
     {
         var dialogOptions = new DialogOptions() { MaxWidth = MaxWidth.False };
-        var dialog = DialogService.Show<ProjectCreateDialog>("Create Project", dialogOptions);
+        var dialog = _dialogService.Show<ProjectCreateDialog>("Create Project", dialogOptions);
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
 
     private async void ShowUpdateDialog(ProjectAdminResponse project)
     {
-        var parameters = new DialogParameters { ["_project"] = project };
+        var parameters = new DialogParameters { ["Project"] = project };
         var dialogOptions = new DialogOptions() { MaxWidth = MaxWidth.False };
-        var dialog = DialogService.Show<ProjectUpdateDialog>("Edit Project", parameters, dialogOptions);
+        var dialog = _dialogService.Show<ProjectUpdateDialog>("Edit Project", parameters, dialogOptions);
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
 
     private async void DeleteProject(ProjectAdminResponse project)
     {
-        var parameters = new DialogParameters();
-        parameters.Add("EntityName", "project");
+        var parameters = new DialogParameters {{"EntityName", "project"}};
 
-        var result = await DialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
-        if (!result.Cancelled)
-        {
-            var httpResponseBody = await httpClient.Delete<ApiResponse<ProjectAdminResponse>>("api/admin/projects/" + project.Id, null);
-            if (httpResponseBody == null || httpResponseBody.Status.Code != 0)
+        var result = await _dialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
+        if (result.Cancelled) return;
+        
+        await _httpClient.Delete<ProjectAdminResponse>("api/admin/projects/" + project.Id,
+            async _ =>
             {
-                if (httpResponseBody != null)
-                    _snackBars.ShowError(httpResponseBody.Status.Message);
-                else
-                    _snackBars.ShowError("Unhandled error");
-            }
-            else
+                await GetListDataFromServer(true);
+            }, async response =>
             {
-                _loading = true;
-                await UpdateTableData(true);
-            }
-        }
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
-    
-    private bool FilterFunc1(ProjectAdminResponse project) => FilterFunc(project, searchString1);
 
-    private bool FilterFunc(ProjectAdminResponse project, string searchString)
+    private bool FilterFunc(ProjectAdminResponse project)
     {
-        if (string.IsNullOrWhiteSpace(searchString))
+        if (string.IsNullOrWhiteSpace(_searchString))
             return true;
-        if (project.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (project.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (project.Id.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (project.Id.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
         return false;
     }

@@ -1,7 +1,6 @@
 ﻿@using ASBDDS.Shared.Models.Requests
 @using ASBDDS.Shared.Models.Responses
-@using Newtonsoft.Json
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
@@ -42,25 +41,25 @@
 
     protected override void OnInitialized()
     {
-        _userAdminPutRequest = new UserAdminPutRequest();
-        _userAdminPutRequest.Id = User.Id;
-        _userAdminPutRequest.Name = User.Name;
-        _userAdminPutRequest.LastName = User.LastName;
-        _userAdminPutRequest.Email = User.Email;
-        _userAdminPutRequest.Disabled = User.Disabled;
+        _userAdminPutRequest = new UserAdminPutRequest
+        {
+            Id = User.Id,
+            Name = User.Name,
+            LastName = User.LastName,
+            Email = User.Email,
+            Disabled = User.Disabled
+        };
     }
 
     private async void Update()
     {
-        var apiResp = await httpClient.Put<ApiResponse<DeviceAdminPutRequest>>("api/admin/users/" + User.Id, _userAdminPutRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Put<DeviceAdminPutRequest>("api/admin/users/" + User.Id, _userAdminPutRequest,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }

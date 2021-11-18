@@ -1,10 +1,8 @@
 ﻿@using ASBDDS.Shared.Models.Requests
 @using ASBDDS.Shared.Models.Responses
 @using ASBDDS.Shared.Models.Database.DataDb
-@using Newtonsoft.Json
 @using ASBDDS.Shared.Helpers
-@using System.Text
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
@@ -87,8 +85,10 @@
 
     protected override void OnInitialized()
     {
-        _switchAdminPostRequest = new SwitchAdminPostRequest();
-        _switchAdminPostRequest.Ports = new List<SwitchPortAdminResponse>();
+        _switchAdminPostRequest = new SwitchAdminPostRequest
+        {
+            Ports = new List<SwitchPortAdminResponse>()
+        };
     }
 
     private void AddPort()
@@ -103,15 +103,13 @@
 
     private async void Create()
     {
-        var apiResp = await httpClient.Post<ApiResponse<SwitchAdminPostRequest>>("api/admin/switches", _switchAdminPostRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Post<SwitchAdminPostRequest>("api/admin/switches", _switchAdminPostRequest,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }

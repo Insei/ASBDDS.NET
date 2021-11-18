@@ -1,10 +1,6 @@
 ﻿@using ASBDDS.Shared.Models.Requests
 @using ASBDDS.Shared.Models.Responses
-@using ASBDDS.Shared.Models.Database.DataDb
-@using Newtonsoft.Json
-@using ASBDDS.Shared.Helpers
-@using System.Text
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
@@ -32,21 +28,22 @@
 
     protected override void OnInitialized()
     {
-        _devRentAdminPutRequest = new DeviceRentUserPutRequest();
-        _devRentAdminPutRequest.Name = DeviceRent.Name;
+        _devRentAdminPutRequest = new DeviceRentUserPutRequest
+        {
+            Name = DeviceRent.Name
+        };
     }
 
     private async void Create()
     {
-        var apiResp = await httpClient.Put<ApiResponse<DeviceRentUserResponse>>("api/devices/rents/" + DeviceRent.Id, _devRentAdminPutRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Put<DeviceRentUserResponse>(
+            "api/devices/rents/" + DeviceRent.Id, _devRentAdminPutRequest, 
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
     }
 }

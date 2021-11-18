@@ -1,6 +1,6 @@
 ﻿@inherits LayoutComponentBase
-@inject IAuthenticationService AuthenticationService
-@inject NavigationManager NavigationManager
+@inject IAuthenticationService _authenticationService
+@inject NavigationManager _navigationManager
 
 <MudLayout>
     <MudThemeProvider />
@@ -10,7 +10,7 @@
         <Authorized>
         <MudText Typo="Typo.h5" Class="ml-3">ASBDDS Admin panel</MudText>
             <MudAppBar Elevation="1">
-                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(DrawerToggle)" />
                 <MudText Typo="Typo.h5" Class="ml-3">ASBDDS Admin panel</MudText>
                 <MudSpacer />
                 <MudIconButton OnClick="Logout" Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Edge="Edge.End" />
@@ -40,6 +40,6 @@
     
     private async void Logout()
     {
-        await AuthenticationService.Logout();
+        await _authenticationService.Logout();
     }
 }

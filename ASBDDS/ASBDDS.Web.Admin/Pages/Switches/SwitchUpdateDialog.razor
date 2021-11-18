@@ -2,9 +2,7 @@
 @using ASBDDS.Shared.Models.Responses
 @using ASBDDS.Shared.Models.Database.DataDb
 @using ASBDDS.Shared.Helpers
-@using Newtonsoft.Json
-@using System.Text
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
@@ -60,7 +58,7 @@
             }
             <MudDivider Class="mt-2 mb-1" />
 
-            @foreach (var port in _switch.Ports)
+            @foreach (var port in Switch.Ports)
             {
                 <MudItem xs="12" Class="d-flex flex-row">
                     <MudTextField Class="mr-1" @bind-Value="@port.Number" Label="Port number" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
@@ -85,7 +83,7 @@
 
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
-    [Parameter] public SwitchAdminResponse _switch { get; set; } = new SwitchAdminResponse();
+    [Parameter] public SwitchAdminResponse Switch { get; set; } = new SwitchAdminResponse();
 
     private SwitchAdminPutRequest _switchAdminPutRequest;
     private SnackBars _snackBars;
@@ -94,19 +92,19 @@
 
     protected override void OnInitialized()
     {
-        _switchAdminPutRequest = new SwitchAdminPutRequest();
-        _switchAdminPutRequest.Ports = new List<SwitchPortAdminResponse>();
-
-        _switchAdminPutRequest.Name = _switch.Name;
-        _switchAdminPutRequest.Ip = _switch.Ip;
-        _switchAdminPutRequest.Serial = _switch.Serial;
-        _switchAdminPutRequest.Ports = _switch.Ports;
-        _switchAdminPutRequest.Manufacturer = _switch.Manufacturer;
-        _switchAdminPutRequest.Model = _switch.Model;
-        _switchAdminPutRequest.AuthMethod = _switch.AuthMethod;
-        _switchAdminPutRequest.Username = _switch.Username;
-        _switchAdminPutRequest.Password = _switch.Password;
-        _switchAdminPutRequest.AccessProtocol = _switch.AccessProtocol;
+        _switchAdminPutRequest = new SwitchAdminPutRequest
+        {
+            Name = Switch.Name,
+            Ip = Switch.Ip,
+            Serial = Switch.Serial,
+            Ports = Switch.Ports,
+            Manufacturer = Switch.Manufacturer,
+            Model = Switch.Model,
+            AuthMethod = Switch.AuthMethod,
+            Username = Switch.Username,
+            Password = Switch.Password,
+            AccessProtocol = Switch.AccessProtocol
+        };
     }
 
     private void AddPort()
@@ -121,15 +119,13 @@
 
     private async void Update()
     {
-        var apiResp = await httpClient.Put<ApiResponse<SwitchAdminPutRequest>>("api/admin/switches/" + _switch.Id, _switchAdminPutRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Put<SwitchAdminPutRequest>("api/admin/switches/" + Switch.Id, _switchAdminPutRequest,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }

@@ -1,15 +1,15 @@
-﻿@inject ISnackbar Snackbar
+﻿@inject ISnackbar _snackbar
 
 @code {
 
-    public void ShowError(string message, string position = Defaults.Classes.Position.BottomLeft)
+    public async Task ShowError(string message, string position = Defaults.Classes.Position.BottomLeft)
     {
         if(char.IsLower(message[0]))
         {
-            message = char.ToUpper(message[0]) + message.Substring(1);
+            message = char.ToUpper(message[0]) + message[1..];
         }
 
-        Snackbar.Configuration.PositionClass = position;
-        Snackbar.Add(message, Severity.Error);
+        _snackbar.Configuration.PositionClass = position;
+        await Task.Run(() => _snackbar.Add(message, Severity.Error));
     }
 }

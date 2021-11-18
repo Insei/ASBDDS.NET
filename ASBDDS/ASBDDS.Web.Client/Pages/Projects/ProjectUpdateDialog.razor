@@ -1,10 +1,6 @@
 ﻿@using ASBDDS.Shared.Models.Requests
 @using ASBDDS.Shared.Models.Responses
-@using ASBDDS.Shared.Models.Database.DataDb
-@using Newtonsoft.Json
-@using ASBDDS.Shared.Helpers
-@using System.Text
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
@@ -36,21 +32,21 @@
 
     protected override void OnInitialized()
     {
-        _projectUserPutRequest = new ProjectUserPutRequest();
-        _projectUserPutRequest.Name = Project.Name;
+        _projectUserPutRequest = new ProjectUserPutRequest
+        {
+            Name = Project.Name
+        };
     }
 
     private async void Update()
     {
-        var apiResp = await httpClient.Put<ApiResponse<ProjectUserPostRequest>>("api/projects/" + Project.Id, _projectUserPutRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Put<ProjectUserPostRequest>(
+            "api/projects/" + Project.Id, _projectUserPutRequest, async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            },async response =>
+            {
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
     }
 }

@@ -1,10 +1,9 @@
 ﻿@page "/leases"
-@using System.Net.Http.Json
 @using ASBDDS.Shared.Models.Responses
 @inject IHttpService _httpClient
 @inject IDialogService _dialogService
 
-<MudTable Items="@_leases" Dense="@_dense" Hover="@_hover" Loading="@_loading" Bordered="@_bordered" Striped="@_striped" Filter="new Func<DHCPLeaseAdminResponse,bool>(FilterFunc1)" @bind-SelectedItem="_selectedItem">
+<MudTable Items="@_leases" Dense="@true" Hover="@true" Loading="@_loading" Bordered="@true" Striped="@true" Filter="new Func<DHCPLeaseAdminResponse,bool>(FilterFunc)">
     <ToolBarContent>
         <MudText Typo="Typo.h6">DHCP Leases List</MudText>
         <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
@@ -45,115 +44,89 @@
 @code {
     private IEnumerable<DHCPLeaseAdminResponse> _leases = new List<DHCPLeaseAdminResponse>();
     private bool _loading;
-    private bool _dense = true;
-    private bool _hover = true;
-    private bool _striped = true;
-    private bool _bordered = true;
     private string _searchString = "";
-    private DHCPLeaseAdminResponse _selectedItem = null;
     private SnackBars _snackBars;
 
     protected override async Task OnInitializedAsync()
     {
-        await GetDataFromServer();
+        await GetListDataFromServer();
     }
-    
-    private async Task GetDataFromServer()
+
+    private async Task GetListDataFromServer(bool stateHasChanged = false)
     {
-        var apiResp = await _httpClient.Get<ApiResponse<List<DHCPLeaseAdminResponse>>>("api/admin/dhcp/leases");
-        if (apiResp == null || apiResp.Status.Code != 0)
+        _loading = true;
+        await _httpClient.Get<List<DHCPLeaseAdminResponse>>("api/admin/dhcp/leases", 
+            async response =>
         {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
+            await Task.Run(() => _leases = response.Data);
+        }, async response =>
         {
-            _leases = apiResp.Data;
+            await _snackBars.ShowError(response.Status.Message);
+        });
+
+        _loading = false;
+        if (stateHasChanged)
+        {
+            StateHasChanged();
         }
     }
 
     private async Task MakeStatic(DHCPLeaseAdminResponse lease)
     {
-        var apiResp = await _httpClient.Put<ApiResponse<List<DHCPLeaseAdminResponse>>>(
+        await _httpClient.Put(
             "api/admin/dhcp/leases/" + lease.MacAddress + "/make-static?ip="+lease.IP, 
-            null);
-        
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-        {
-            await GetDataFromServer();
-            StateHasChanged();
-        }
+            null, 
+            async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
     
     private async Task MakeDynamic(DHCPLeaseAdminResponse lease)
     {
-        var apiResp = await _httpClient.Put<ApiResponse<List<DHCPLeaseAdminResponse>>>(
+        await _httpClient.Put(
             "api/admin/dhcp/leases/" + lease.MacAddress + "/make-dynamic", 
-            null);
-        
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-        {
-            await GetDataFromServer();
-            StateHasChanged();
-        }
+            null, 
+            async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 
     private async Task Delete(DHCPLeaseAdminResponse lease)
     {
-        var apiResp = await _httpClient.Delete<ApiResponse<List<DHCPLeaseAdminResponse>>>(
-            "api/admin/dhcp/leases/" + lease.MacAddress, 
-            null);
-        
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-        {
-            await GetDataFromServer();
-            StateHasChanged();
-        }
+        await _httpClient.Delete(
+            "api/admin/dhcp/leases/" + lease.MacAddress,
+            async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
     
     private async void ShowCreateDialog()
     {
         var dialog = _dialogService.Show<DHCPLeaseCreate>("Create DHCP Lease");
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            await GetDataFromServer();
-            StateHasChanged();
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
 
-    private bool FilterFunc1(DHCPLeaseAdminResponse lease) => FilterFunc(lease, _searchString);
-    
-    private bool FilterFunc(DHCPLeaseAdminResponse lease, string searchString)
+    private bool FilterFunc(DHCPLeaseAdminResponse lease)
     {
-        if (string.IsNullOrWhiteSpace(searchString))
+        if (string.IsNullOrWhiteSpace(_searchString))
             return true;
-        if (lease.IP.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (lease.IP.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (lease.MacAddress.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (lease.MacAddress.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
         return false;
     }

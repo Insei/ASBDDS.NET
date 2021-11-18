@@ -1,10 +1,9 @@
 ﻿@page "/consoles"
-@using ASBDDS.Shared.Models.Responses
 @using ASBDDS.Shared.Dtos.DbConsole
 @inject IHttpService _httpClient
 @inject IDialogService _dialogService
 
-<MudTable Items="@_consoles" Dense="@_dense" Hover="@_hover" Loading="@_loading" Bordered="@_bordered" Striped="@_striped" Filter="new Func<AdminDbConsoleDto,bool>(FilterFunc1)" @bind-SelectedItem="_selectedItem">
+<MudTable Items="@_consoles" Dense="@true" Hover="@true" Loading="@_loading" Bordered="@true" Striped="@true" Filter="new Func<AdminDbConsoleDto,bool>(FilterFunc)">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Consoles List</MudText>
         <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
@@ -45,48 +44,36 @@
 @code {
     private IEnumerable<AdminDbConsoleDto> _consoles = new List<AdminDbConsoleDto>();
     private bool _loading;
-    private bool _dense = true;
-    private bool _hover = true;
-    private bool _striped = true;
-    private bool _bordered = true;
     private string _searchString = "";
-    private AdminDbConsoleDto _selectedItem = null;
     private SnackBars _snackBars;
     
     protected override async Task OnInitializedAsync()
     {
-        await GetDataFromServer();
+        await GetListDataFromServer();
     }
 
-    private async Task<int> GetDataFromServer(bool StateChanged = false)
+    private async Task GetListDataFromServer(bool stateHasChanged = false)
     {
-        var apiResp = await _httpClient.Get<ApiResponse<List<AdminDbConsoleDto>>>("api/admin/consoles/");
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            _loading = false;
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-        {
-            _loading = false;
-            _consoles = apiResp.Data;
-            if (StateChanged) StateHasChanged();
-        }
-        return 0;
+        _loading = true;
+        await _httpClient.Get<List<AdminDbConsoleDto>>("api/admin/consoles/",
+            async response => {
+                await Task.Run(() => _consoles = response.Data);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
+        
+        _loading = false;
+        if (stateHasChanged) 
+            StateHasChanged();
     }
     
     private async void ShowCreateDialog()
     {
         var dialog = _dialogService.Show<ConsoleCreateDialog>("Create console");
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            var res = await GetDataFromServer(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
     
     private async void ShowUpdateDialog(AdminDbConsoleDto console)
@@ -95,87 +82,60 @@
         var dialogOptions = new DialogOptions() { MaxWidth = MaxWidth.False };
         var dialog = _dialogService.Show<ConsoleUpdateDialog>("Edit Console", parameters, dialogOptions);
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            var res = await GetDataFromServer(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
     
-    private async void ShowOutputDialog(AdminDbConsoleDto console)
+    private void ShowOutputDialog(AdminDbConsoleDto console)
     {
         var parameters = new DialogParameters { ["DbConsoleDto"] = console };
         var dialogOptions = new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true};
-        var dialog = _dialogService.Show<ConsoleOutputDialog>("Console output", parameters, dialogOptions);
+        _dialogService.Show<ConsoleOutputDialog>("Console output", parameters, dialogOptions);
     }
     
     private async Task Delete(AdminDbConsoleDto console)
     {
-        var apiResp = await _httpClient.Delete<ApiResponse>(
-            "api/admin/consoles/" + console.Id, 
-            null);
-        
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-        {
-            await GetDataFromServer();
-            StateHasChanged();
-        }
+        await _httpClient.Delete(
+            "api/admin/consoles/" + console.Id, async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
     
     private async Task Start(AdminDbConsoleDto console)
     {
-        var apiResp = await _httpClient.Post<ApiResponse>(
+        await _httpClient.Post(
             "api/admin/consoles/" + console.Id + "/start", 
-            null);
-        
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-        {
-            await GetDataFromServer();
-            StateHasChanged();
-        }
+            null, async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
     
     private async Task Stop(AdminDbConsoleDto console)
     {
-        var apiResp = await _httpClient.Post<ApiResponse>(
-            "api/admin/consoles/" + console.Id + "/stop", 
-            null);
-        
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-        {
-            await GetDataFromServer();
-            StateHasChanged();
-        }
+        await _httpClient.Post(
+            "api/admin/consoles/" + console.Id + "/stop",
+            null, async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
-    
-    private bool FilterFunc1(AdminDbConsoleDto console) => FilterFunc(console, _searchString);
-    
-    private bool FilterFunc(AdminDbConsoleDto console, string searchString)
+
+    private bool FilterFunc(AdminDbConsoleDto console)
     {
-        if (string.IsNullOrWhiteSpace(searchString))
+        if (string.IsNullOrWhiteSpace(_searchString))
             return true;
-        if (console.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (console.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
         return false;
     }

@@ -1,17 +1,16 @@
 ﻿@page "/devices/rents"
-@using System.Net.Http.Json
 @using ASBDDS.Shared.Models.Responses
 @inject IHttpService _httpClient
 @inject IDialogService _dialogService
 @inject ISnackbar _snackbar
 
-<MudTable Items="@DevicesRents" Dense="@dense" Hover="@hover" Loading="@_loading" Bordered="@bordered" Striped="@striped" Filter="new Func<DeviceRentUserResponse,bool>(FilterFunc1)" @bind-SelectedItem="selectedItem1">
+<MudTable Items="@_devicesRents" Dense="@(true)" Hover="@(true)" Loading="@_loading" Bordered="@(true)" Striped="@(true)" Filter="new Func<DeviceRentUserResponse,bool>(FilterFunc)">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Devices Rents List</MudText>
         <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
         <MudText Class="small">Add Device Rent</MudText>
         <MudSpacer />
-        <MudTextField @bind-Value="searchString1" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
     </ToolBarContent>
     <HeaderContent>
         <MudTh>Id</MudTh>
@@ -55,33 +54,34 @@
 <SnackBars @ref="_snackBars"></SnackBars>
 @code {
     private bool _loading;
-    private bool dense = true;
-    private bool hover = true;
-    private bool striped = true;
-    private bool bordered = true;
-    private string searchString1 = "";
-    private DeviceRentUserResponse selectedItem1 = null;
-    private HashSet<DeviceRentUserResponse> selectedItems = new HashSet<DeviceRentUserResponse>();
+    private string _searchString = "";
     private SnackBars _snackBars;
 
     private IEnumerable<DeviceRentUserResponse>
-        DevicesRents = new List<DeviceRentUserResponse>();
+        _devicesRents = new List<DeviceRentUserResponse>();
 
+    private async Task GetListDataFromServer(bool stateHasChanged = false)
+    {
+        _loading = true;
+        await _httpClient.Get<List<DeviceRentUserResponse>>("api/devices/rents", 
+             async response =>
+             {
+                 await Task.Run(() => _devicesRents = response.Data);
+             }, async response =>
+            {
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
+            
+        _loading = false;
+        if (stateHasChanged)
+        {
+            StateHasChanged();
+        }
+    }
+    
     protected override async Task OnInitializedAsync()
     {
-        await UpdateTableData();
-    }
-
-    private async Task<int> UpdateTableData(bool StateChanged = false)
-    {
-        var responseBody = await _httpClient.Get<ApiResponse<List<DeviceRentUserResponse>>>("api/devices/rents");
-
-        DevicesRents = responseBody.Data;
-
-        _loading = false;
-        if (StateChanged)
-            StateHasChanged();
-        return 0;
+        await GetListDataFromServer();
     }
 
     private async void ShowCreateDialog()
@@ -90,8 +90,7 @@
         var result = await dialog.Result;
         if (!result.Cancelled)
         {
-            _loading = true;
-            await UpdateTableData(true);
+            await GetListDataFromServer(true);
         }
     }
 
@@ -102,104 +101,85 @@
         var result = await dialog.Result;
         if (!result.Cancelled)
         {
-            _loading = true;
-            await UpdateTableData(true);
+            await GetListDataFromServer(true);
         }
     }
     
-    private async void ShowConsoleOutputDialog(DeviceRentUserResponse device)
+    private void ShowConsoleOutputDialog(DeviceRentUserResponse device)
     {
         var parameters = new DialogParameters { ["DeviceRent"] = device };
         var dialogOptions = new DialogOptions() { MaxWidth = MaxWidth.Large, FullWidth = true};
-        var dialog = _dialogService.Show<DevicesRentsConsoleOutputDialog>("Console log", parameters, dialogOptions);
+        _dialogService.Show<DevicesRentsConsoleOutputDialog>("Console log", parameters, dialogOptions);
     }
 
     private async void DeleteDeviceRent(DeviceRentUserResponse device)
     {
-        var parameters = new DialogParameters();
-        parameters.Add("EntityName", "device rent");
+        var parameters = new DialogParameters {{"EntityName", "device rent"}};
 
         var result = await _dialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
-        if (!result.Cancelled)
-        {
-            var apiResp = await _httpClient.Delete<ApiResponse<DeviceRentUserResponse>>("api/devices/rents/" + device.Id, null);
-            if (apiResp == null || apiResp.Status.Code != 0)
+        if (result.Cancelled) return;
+        
+        await _httpClient.Delete("api/devices/rents/" + device.Id, async _ =>
             {
-                if (apiResp != null)
-                    _snackBars.ShowError(apiResp.Status.Message);
-                else
-                    _snackBars.ShowError("Unhandled error");
-            }
-            else
+                await GetListDataFromServer(true);
+            },  async response =>
             {
-                _loading = true;
-                await UpdateTableData(true);
-            }
-        }
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
     }
     private async void PowerOffDeviceByRent(DeviceRentUserResponse device)
     {
-        var parameters = new DialogParameters();
-        parameters.Add("EntityName", "device");
-        parameters.Add("Action", "Power off");
-
-        var result = await _dialogService.Show<DeleteConfirmDialog>("Power off", parameters).Result;
-        if (!result.Cancelled)
+        var parameters = new DialogParameters
         {
-            var apiResp = await _httpClient.Post<ApiResponse<DeviceRentUserResponse>>("api/devices/rents/" + device.Id + "/poweroff", null);
-            if (apiResp == null || apiResp.Status.Code != 0)
+            {"EntityName", "device"},
+            {"Action", "Power off"}
+        };
+        var result = await _dialogService.Show<DeleteConfirmDialog>("Power off", parameters).Result;
+        if (result.Cancelled) return;
+        
+        await _httpClient.Post<DeviceRentUserResponse>(
+            "api/devices/rents/" + device.Id + "/poweroff", null, 
+            async _ =>
             {
-                if (apiResp != null)
-                    _snackBars.ShowError(apiResp.Status.Message);
-                else
-                    _snackBars.ShowError("Unhandled error");
-            }
-            else
+                await GetListDataFromServer(true);
+            }, async response =>
             {
-                _loading = true;
-                await UpdateTableData(true);
-            }
-        }
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
     }
     
     private async void PowerOnDeviceByRent(DeviceRentUserResponse device)
     {
-        var parameters = new DialogParameters();
-        parameters.Add("EntityName", "device");
-        parameters.Add("Action", "Power on");
+        var parameters = new DialogParameters
+        {
+            {"EntityName", "device"},
+            {"Action", "Power on"}
+        };
 
         var result = await _dialogService.Show<DeleteConfirmDialog>("Power on", parameters).Result;
-        if (!result.Cancelled)
-        {
-            var apiResp = await _httpClient.Post<ApiResponse<DeviceRentUserResponse>>("api/devices/rents/" + device.Id + "/poweron", null);
-            if (apiResp == null || apiResp.Status.Code != 0)
+        if (result.Cancelled) return;
+        
+        await _httpClient.Post<DeviceRentUserResponse>(
+            "api/devices/rents/" + device.Id + "/poweron", null, async _ =>
             {
-                if (apiResp != null)
-                    _snackBars.ShowError(apiResp.Status.Message);
-                else
-                    _snackBars.ShowError("Unhandled error");
-            }
-            else
+                await GetListDataFromServer(true);
+            }, async response =>
             {
-                _loading = true;
-                await UpdateTableData(true);
-            }
-        }
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
     }
 
-    private bool FilterFunc1(DeviceRentUserResponse device) => FilterFunc(device, searchString1);
-
-    private bool FilterFunc(DeviceRentUserResponse device, string searchString)
+    private bool FilterFunc(DeviceRentUserResponse device)
     {
-        if (string.IsNullOrWhiteSpace(searchString))
+        if (string.IsNullOrWhiteSpace(_searchString))
             return true;
-        if (device.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Id.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Id.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Serial.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Serial.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.MacAddress.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.MacAddress.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
         return false;
     }

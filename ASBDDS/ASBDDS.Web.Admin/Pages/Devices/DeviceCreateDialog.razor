@@ -1,11 +1,9 @@
 ﻿@using ASBDDS.Shared.Models.Requests
 @using ASBDDS.Shared.Models.Responses
 @using ASBDDS.Shared.Models.Database.DataDb
-@using Newtonsoft.Json
 @using ASBDDS.Shared.Helpers
-@using System.Text
 @using ASBDDS.Shared.Dtos.DbConsole
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
@@ -47,8 +45,6 @@
                 @{
                     if (_deviceAdminPostRequest.Manufacturer != "")
                     {
-                        var deviceHelper = new DeviceHelper();
-                        var models = deviceHelper.GetModels(_deviceAdminPostRequest.Manufacturer);
                         foreach (DevicePowerControlType type in Enum.GetValues(typeof(DevicePowerControlType)))
                         {
                             <MudSelectItem Value="@type">@type</MudSelectItem>
@@ -57,11 +53,11 @@
                 }
             </MudSelect>
             <MudSelect Class="my-2" @bind-Value="@_deviceAdminPostRequest.SwitchPortId" Label="Port" Variant="Variant.Outlined" Margin="Margin.Dense">
-                @foreach (var _switch in _switches)
+                @foreach (var ethSwitch in _switches)
                 {
-                    foreach (var port in _switch.Ports)
+                    foreach (var port in ethSwitch.Ports)
                     {
-                        var portFullName = _switch.Name + " (" + _switch.Model + " / " + port.Number + ")";
+                        var portFullName = ethSwitch.Name + " (" + ethSwitch.Model + " / " + port.Number + ")";
                         <MudSelectItem Value="@port.Id">@portFullName</MudSelectItem>
                     }
                 }
@@ -101,43 +97,37 @@
 
     private async Task GetSwitches()
     {
-        var apiResp = await httpClient.Get<ApiResponse<List<SwitchAdminResponse>>>("api/admin/switches/");
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            _switches = apiResp.Data;
+        await _httpClient.Get<List<SwitchAdminResponse>>("api/admin/switches/",
+            async response =>
+            {
+                await Task.Run(() => _switches = response.Data);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
     
     private async Task GetConsoles()
     {
-        var apiResp = await httpClient.Get<ApiResponse<List<AdminDbConsoleDto>>>("api/admin/consoles/");
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            _consoles = apiResp.Data;
+        await _httpClient.Get<List<AdminDbConsoleDto>>("api/admin/consoles/", 
+            async response =>
+            {
+                await Task.Run(() => _consoles = response.Data);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
     
     private async void Create()
     {
-        var apiResp = await httpClient.Post<ApiResponse<DeviceAdminPostRequest>>("api/admin/devices", _deviceAdminPostRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Post<DeviceAdminPostRequest>("api/admin/devices", _deviceAdminPostRequest,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }

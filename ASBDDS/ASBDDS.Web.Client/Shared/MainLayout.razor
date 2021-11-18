@@ -13,7 +13,7 @@
     <AuthorizeView>
         <Authorized>
             <MudAppBar Elevation="1">
-                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(_ => DrawerToggle())" />
                 <MudText Typo="Typo.h5" Class="ml-3">ASBDDS Web</MudText>
                 <MudSpacer />
                 @{
@@ -51,13 +51,10 @@
     private IEnumerable<ProjectUserResponse> _projectsUserResponse;
     private Timer _timer;
     private ProjectUserResponse _currentProject = new ProjectUserResponse();
-    private string _selectedProjectName { get; set; }
+    private string _selectedProjectName = "";
     private Guid _projectGuidChangeHandler
     {
-        get
-        {
-            return _currentProject.Id;
-        }
+        get => _currentProject.Id;
         set
         {
             OnProjectChange(value);
@@ -67,11 +64,9 @@
 
     private async void CheckProjects(object state)
     {
-        if (!await (_authenticationStateProvider as ApiAuthenticationStateProvider)?.TokenIsExpired())
-        {
-            await TryGetProjects();
-            _timer.Dispose();
-        }
+        if (await (_authenticationStateProvider as ApiAuthenticationStateProvider)?.TokenIsExpired()) return;
+        await TryGetProjects();
+        await _timer.DisposeAsync();
     }
 
     void DrawerToggle()
@@ -86,7 +81,7 @@
 
     private async Task TryGetProjects()
     {
-        var apiResp = await _httpClient.Get<ApiResponse<List<ProjectUserResponse>>>("api/projects/");
+        var apiResp = await _httpClient.Get<List<ProjectUserResponse>>("api/projects/");
         if (apiResp != null && apiResp.Status.Code == 0)
         {
             _projectsUserResponse = apiResp.Data;
@@ -122,23 +117,19 @@
 
     private async void OnProjectChange(Guid id)
     {
-        if (_currentProject.Id != Guid.Empty)
+        if (_currentProject.Id == Guid.Empty) return;
+        if (_projectsUserResponse != null)
         {
-            if (_projectsUserResponse != null)
+            var apiResp = await _httpClient.Get<List<ProjectUserResponse>>("api/projects/");
+            if (apiResp != null && apiResp.Status.Code == 0)
             {
-                var apiResp = await _httpClient.Get<ApiResponse<List<ProjectUserResponse>>>("api/projects/");
-                if (apiResp != null && apiResp.Status.Code == 0)
-                {
-                    _projectsUserResponse = apiResp.Data;
-                }
-            }
-            var project = _projectsUserResponse?.FirstOrDefault(p => p.Id == _currentProject.Id);
-            if (project != null)
-            {
-                await _localStorageService.SetItemAsync<ProjectUserResponse>("CurrentProject", _currentProject);
-                StateHasChanged();
+                _projectsUserResponse = apiResp.Data;
             }
         }
+        var project = _projectsUserResponse?.FirstOrDefault(p => p.Id == _currentProject.Id);
+        if (project == null) return;
+        await _localStorageService.SetItemAsync<ProjectUserResponse>("CurrentProject", _currentProject);
+        StateHasChanged();
     }
 
 }

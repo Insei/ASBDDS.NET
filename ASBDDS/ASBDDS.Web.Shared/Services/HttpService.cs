@@ -19,99 +19,260 @@ namespace ASBDDS.Web.Client.Services
     public class HttpService : IHttpService
     {
         private HttpClient _httpClient;
-        private NavigationManager _navigationManager;
         private ILocalStorageService _localStorageService;
         private ApiAuthenticationStateProvider _authenticationStateProvider;
-        private IConfiguration _configuration;
         private IAuthenticationService _authenticationService;
 
         public HttpService(
             HttpClient httpClient,
-            NavigationManager navigationManager,
             ILocalStorageService localStorageService,
-            IConfiguration configuration,
             AuthenticationStateProvider authenticationStateProvider,
             IAuthenticationService authenticationService
         ) {
             _httpClient = httpClient;
-            _navigationManager = navigationManager;
             _localStorageService = localStorageService;
-            _configuration = configuration;
             _authenticationStateProvider = (ApiAuthenticationStateProvider)authenticationStateProvider;
             _authenticationService = authenticationService;
         }
 
-        public async Task<T> Get<T>(string uri)
+        public async Task<ApiResponse<T>> Get<T>(string uri, 
+            Func<ApiResponse<T>, Task> successCallback = null,
+            Func<ApiResponse<T>, Task> failCallback = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            return await SendRequest<T>(request);
+            var apiResp = await SendRequest<ApiResponse<T>>(request);
+            await RunCallbacks(apiResp, successCallback, failCallback);
+            return apiResp;
+        }
+        
+        public async Task<ApiResponse> Get(string uri, 
+            Func<ApiResponse, Task> successCallback = null,
+            Func<ApiResponse, Task> failCallback = null)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            var apiResp = await SendRequest<ApiResponse>(request);
+            await RunCallbacks(apiResp, successCallback, failCallback);
+            return apiResp;
         }
 
-        public async Task<T> Post<T>(string uri, object value)
+        public async Task<ApiResponse<T>> Post<T>(string uri, object value, 
+            Func<ApiResponse<T>, Task> successCallback = null,
+            Func<ApiResponse<T>, Task> failCallback = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
             request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");
-            return await SendRequest<T>(request);
-
+            var apiResp = await SendRequest<ApiResponse<T>>(request);
+            await RunCallbacks(apiResp, successCallback, failCallback);
+            return apiResp;
         }
-        public async Task<T> Put<T>(string uri, object value = null)
+        
+        public async Task<ApiResponse> Post(string uri, object value, 
+            Func<ApiResponse, Task> successCallback = null,
+            Func<ApiResponse, Task> failCallback = null)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");
+            var apiResp = await SendRequest<ApiResponse>(request);
+            await RunCallbacks(apiResp, successCallback, failCallback);
+            return apiResp;
+        }
+
+        public async Task<ApiResponse<T>> Put<T>(string uri, object value, 
+            Func<ApiResponse<T>, Task> successCallback = null,
+            Func<ApiResponse<T>, Task> failCallback = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Put, uri);
             request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");
-            return await SendRequest<T>(request);
+            var apiResp = await SendRequest<ApiResponse<T>>(request);
+            await RunCallbacks(apiResp, successCallback, failCallback);
+            return apiResp;
         }
         
-        public async Task<T> Delete<T>(string uri, object value)
+        public async Task<ApiResponse> Put(string uri, object value, 
+            Func<ApiResponse, Task> successCallback = null,
+            Func<ApiResponse, Task> failCallback = null)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, uri);
+            request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");
+            var apiResp = await SendRequest<ApiResponse>(request);
+            await RunCallbacks(apiResp, successCallback, failCallback);
+            return apiResp;
+        }
+
+        public async Task<ApiResponse<T>> Delete<T>(string uri, 
+            Func<ApiResponse<T>, Task> successCallback = null,
+            Func<ApiResponse<T>, Task> failCallback = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Delete, uri);
-            if(value != null)
-                request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");
-            return await SendRequest<T>(request);
+            var apiResp = await SendRequest<ApiResponse<T>>(request);
+            await RunCallbacks(apiResp, successCallback, failCallback);
+            return apiResp;
+        }
+        
+        public async Task<ApiResponse> Delete(string uri, 
+            Func<ApiResponse, Task> successCallback = null,
+            Func<ApiResponse, Task> failCallback = null)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Delete, uri);
+            var apiResp = await SendRequest<ApiResponse>(request);
+            await RunCallbacks(apiResp, successCallback, failCallback);
+            return apiResp;
         }
 
         // helper methods
-        private async Task<T> SendRequest<T>(HttpRequestMessage request)
+        private async Task<int> RunCallbacks(ApiResponse apiResp, Func<ApiResponse, Task> successCallback = null,
+            Func<ApiResponse, Task> failCallback = null)
         {
-            // add jwt auth header if user is logged in and request is to the api url
-            var tokenResponse = await _localStorageService.GetItemAsync<TokenResponse>("TokenResponse");
-            var tokenExpired = await _authenticationStateProvider.TokenIsExpired();
+            if (apiResp.Status.Code == 0 && successCallback != null)
+            {
+                try
+                {
+                    await successCallback(apiResp);
+                }
+                catch (Exception ex)
+                {
+                    apiResp.Status.Code = 2000;
+                    apiResp.Status.Message = ex.Message;
+                }
+            }
+            
+            if (apiResp.Status.Code != 0 && failCallback != null)
+            {
+                await failCallback(apiResp);
+            }
+            return 0;
+        }
+        
+        private async Task<int> RunCallbacks<T>(ApiResponse<T> apiResp, Func<ApiResponse<T>, Task> successCallback = null,
+            Func<ApiResponse<T>, Task> failCallback = null)
+        {
+            if (apiResp.Status.Code == 0 && successCallback != null)
+            {
+                try
+                {
+                    await successCallback(apiResp);
+                }
+                catch (Exception ex)
+                {
+                    apiResp.Status.Code = 2000;
+                    apiResp.Status.Message = ex.Message;
+                }
+            }
+            
+            if (apiResp.Status.Code != 0 && failCallback != null)
+            {
+                await failCallback(apiResp);
+            }
+            return 0;
+        }
+
+        private void ProcessApiResponse(ApiResponse apiResp)
+        {
+            if (apiResp == null || apiResp.Status.Code != 0)
+            {
+                apiResp ??= new ApiResponse
+                {
+                    Status =
+                    {
+                        Message = "Didn't receive a response from the server",
+                        Code = 500
+                    }
+                };
+                if(apiResp.Status.Code != 0 && (apiResp.Status.Message == null || apiResp.Status.Message.Trim().Length == 0))
+                {
+                    apiResp.Status.Message = "Server return error, but not send error message";
+                }
+            }
+        }
+
+        private bool TypeIsApiResponse<T>()
+        {
+            return typeof(T).GetGenericTypeDefinition() == typeof(ApiResponse<>) ||
+                   typeof(T).GetGenericTypeDefinition() == typeof(ApiResponse);
+        }
+        
+        private async Task SetProjectHeader(HttpRequestMessage request)
+        {
             var currentProject = await _localStorageService.GetItemAsync<ProjectUserResponse>("CurrentProject");
             if (currentProject != null)
             {
                 request.Headers.Add("ProjectId", currentProject.Id.ToString());
             }
+        }
+
+        private async Task<bool> CheckAuthorizationsAndSetHeader(HttpRequestMessage request)
+        {
+            var tokenResponse = await _localStorageService.GetItemAsync<TokenResponse>("TokenResponse");
+            var tokenExpired = await _authenticationStateProvider.TokenIsExpired();
             if (!tokenExpired)
-                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
-            else
             {
-                var isRefreshOk = await _authenticationService.RefreshToken();
-                if (isRefreshOk)
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
+                return true;
+            }
+            var isRefreshOk = await _authenticationService.RefreshToken();
+            if (isRefreshOk)
+            {
+                return await CheckAuthorizationsAndSetHeader(request);
+            }
+            await _authenticationService.Logout();
+            return false;
+        }
+        
+        private async Task<T> SendRequest<T>(HttpRequestMessage request)
+        {
+            await SetProjectHeader(request);
+            var authResult = await CheckAuthorizationsAndSetHeader(request);
+            if (!authResult){
+                if (TypeIsApiResponse<T>())
                 {
-                    return await SendRequest<T>(request);
+                    return MakeApiResponse<T>(401, "You session is expired. Please log in.");
                 }
-                await _authenticationService.Logout();
                 return default;
             }
-
+            
             using var response = await _httpClient.SendAsync(request);
 
-            // auto logout on 401 response
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            if (response.StatusCode != HttpStatusCode.OK)
             {
-                await _authenticationService.Logout();
+                if (TypeIsApiResponse<T>())
+                {
+                    return MakeApiResponse<T>((int)response.StatusCode, response.ReasonPhrase);
+                }
                 return default;
             }
-
+            
             var respStr = await response.Content.ReadAsStringAsync();
-            // throw exception on error response
-            //if (response.IsSuccessStatusCode)
-            //{
-            //    var resp = JsonConvert.DeserializeObject<ApiResponse>(respStr);
-            //    if (resp.Status.Code != 0)
-            //        throw new Exception(resp.Status.Message);
-            //}
 
-            return JsonConvert.DeserializeObject<T>(respStr);
+            var apiResp = JsonConvert.DeserializeObject<T>(respStr);
+            if (apiResp is ApiResponse)
+                ProcessApiResponse(apiResp as ApiResponse);
+            
+            if (apiResp == null && TypeIsApiResponse<T>())
+            {
+                apiResp = MakeApiResponse<T>(501, "Can't parse json from server");
+            }
+            
+            return apiResp;
+        }
+
+        private TApiResponse MakeApiResponse<TApiResponse>(int code, string message)
+        {
+            Type genericType = null;
+            var genericSourceTypes = typeof(TApiResponse).GetGenericArguments();
+
+            if (genericSourceTypes.Length > 0)
+                genericType = typeof(ApiResponse<>).MakeGenericType(genericSourceTypes[0]);
+            else
+                genericType = typeof(ApiResponse);
+
+            var apiRespT = (TApiResponse) Activator.CreateInstance(genericType);
+
+            var apiResp = apiRespT as ApiResponse;
+            
+            apiResp.Status.Code = code;
+            apiResp.Status.Message = message;
+
+            return apiRespT;
         }
     }
 }

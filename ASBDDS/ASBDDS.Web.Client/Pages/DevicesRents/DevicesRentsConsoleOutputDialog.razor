@@ -1,6 +1,4 @@
 ﻿@using ASBDDS.Shared.Models.Responses
-@using ASBDDS.Shared.Dtos.DbConsole
-@using ASBDDS.Shared.Dtos.SerialPortSettings
 @using Microsoft.AspNetCore.Components
 @using ASBDDS.Shared.Dtos
 @inject IHttpService _httpClient
@@ -9,7 +7,7 @@
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
-        <MudTable Items="@_output" Dense="@true" Hover="@true" Height="350px" Breakpoint="Breakpoint.Sm" Virtualize="true" FixedHeader="true">
+        <MudTable Items="@_output" Loading="@_loading" Dense="@true" Hover="@true" Height="350px" Breakpoint="Breakpoint.Sm" Virtualize="true" FixedHeader="true">
             <HeaderContent>
                 <MudTh>Message</MudTh>
             </HeaderContent>
@@ -28,7 +26,7 @@
 @code {
 
     private IEnumerable<ConsoleOutputDto> _output = new List<ConsoleOutputDto>();
-    private bool Loading { get; set; }
+    private bool _loading;
 
     [CascadingParameter] 
     MudDialogInstance MudDialog { get; set; }
@@ -39,24 +37,21 @@
 
     void Cancel() => MudDialog.Cancel();
 
-    private async Task<int> UpdateData(bool StateChanged = false)
+    private async Task<int> UpdateData(bool stateHasChanged = false)
     {
-        Loading = true;
-        var apiResp = await _httpClient.Get<ApiResponse<List<ConsoleOutputDto>>>("api/devices/rents/" + DeviceRent.Id + "/console/output");
-        if (apiResp == null || apiResp.Status.Code != 0)
+        _loading = true;
+        await _httpClient.Get<List<ConsoleOutputDto>>("api/devices/rents/" + DeviceRent.Id + "/console/output", 
+        async response =>
         {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
+            await Task.Run(() => _output = response.Data.Select(o => new ConsoleOutputDto(){DateUtc = o.DateUtc.ToLocalTime(), Text = o.Text}));
+        }, 
+        async response =>
         {
-            _output = apiResp.Data.Select(o => new ConsoleOutputDto(){DateUtc = o.DateUtc.ToLocalTime(), Text = o.Text});
-        }
-        
-        Loading = false;
-        if(StateChanged)
+            await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+        });
+
+        _loading = false;
+        if(stateHasChanged)
             StateHasChanged();
         
         return 0;

@@ -1,15 +1,15 @@
 ﻿@page "/switches"
 @using ASBDDS.Shared.Models.Responses
-@inject IHttpService httpClient
-@inject IDialogService DialogService
+@inject IHttpService _httpClient
+@inject IDialogService _dialogService
 
-<MudTable Items="@Switches" Dense="@dense" Hover="@hover" Loading="@_loading" Bordered="@bordered" Striped="@striped" Filter="new Func<SwitchAdminResponse,bool>(FilterFunc1)" @bind-SelectedItem="selectedItem1">
+<MudTable Items="@_switches" Dense="@true" Hover="@true" Loading="@_loading" Bordered="@true" Striped="@true" Filter="new Func<SwitchAdminResponse,bool>(FilterFunc)">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Switches List</MudText>
         <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
         <MudText Class="small">Add Switch</MudText>
         <MudSpacer />
-        <MudTextField @bind-Value="searchString1" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
     </ToolBarContent>
     <HeaderContent>
         <MudTh>Manufacturer</MudTh>
@@ -28,7 +28,7 @@
         <MudTd DataLabel="IP">@context.Ip</MudTd>
         <MudTd Style="white-space: nowrap; width: 1%;">
             <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => ShowPort(context.Id.ToString()))">
-                @((ShowPorts.GetValueOrDefault(context.Id.ToString()) == true)? "Hide" : "Show") Ports
+                @(_showPorts.GetValueOrDefault(context.Id.ToString())? "Hide" : "Show") Ports
             </MudButton>
         </MudTd>
         <MudTd Style="white-space: nowrap; width: 1%;" DataLabel="Options">
@@ -39,7 +39,7 @@
         </MudTd>
     </RowTemplate>
     <ChildRowContent>
-        @if (ShowPorts.GetValueOrDefault(context.Id.ToString()))
+        @if (_showPorts.GetValueOrDefault(context.Id.ToString()))
         {
             <MudTr>
                 <td colspan="6">
@@ -79,108 +79,97 @@
 <SnackBars @ref="_snackBars"></SnackBars>
 @code {
     private bool _loading;
-    private bool dense = true;
-    private bool hover = true;
-    private bool striped = true;
-    private bool bordered = true;
-    private string searchString1 = "";
-    private SwitchAdminResponse selectedItem1 = null;
-    private HashSet<SwitchAdminResponse> selectedItems = new HashSet<SwitchAdminResponse>();
+    private string _searchString = "";
     private SnackBars _snackBars;
 
-    private IEnumerable<SwitchAdminResponse> Switches = new List<SwitchAdminResponse>();
-    private Dictionary<string, bool> ShowPorts = new Dictionary<string, bool>();
+    private IEnumerable<SwitchAdminResponse> _switches = new List<SwitchAdminResponse>();
+    private readonly Dictionary<string, bool> _showPorts = new Dictionary<string, bool>();
 
     protected override async Task OnInitializedAsync()
     {
-        await UpdateTableData();
+        await GetListDataFromServer();
     }
 
-    private async Task<int> UpdateTableData(bool StateChanged = false)
+    private async Task GetListDataFromServer(bool stateHasChanged = false)
     {
-        var responseBody = await httpClient.Get<ApiResponse<List<SwitchAdminResponse>>>("api/admin/switches/");
-        ShowPorts.Clear();
-        foreach (var element in responseBody.Data)
-        {
-            ShowPorts.Add(element.Id.ToString(), false);
-        }
-        Switches = responseBody.Data;
+        _loading = true;
+        await _httpClient.Get<List<SwitchAdminResponse>>("api/admin/switches/",
+            async response =>
+            {
+                await Task.Run(() =>
+                {
+                    _showPorts.Clear();
+                    foreach (var element in response.Data)
+                    {
+                        _showPorts.Add(element.Id.ToString(), false);
+                    }
+                    _switches = response.Data;
+                });
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
 
         _loading = false;
-        if (StateChanged) StateHasChanged();
-        return 0;
+        if (stateHasChanged)
+            StateHasChanged();
     }
 
     private void ShowPort(string id)
     {
-        ShowPorts[id] = ShowPorts[id] == true ? false : true;
+        _showPorts[id] = _showPorts[id] != true;
     }
 
     private async void ShowCreateDialog()
     {
-        var dialog = DialogService.Show<SwitchCreateDialog>("Create Switch");
+        var dialog = _dialogService.Show<SwitchCreateDialog>("Create Switch");
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
 
     private async void ShowUpdateDialog(SwitchAdminResponse @switch)
     {
-        var parameters = new DialogParameters { ["_switch"] = @switch };
-        var dialog = DialogService.Show<SwitchUpdateDialog>("Edit Switch", parameters);
+        var parameters = new DialogParameters { ["Switch"] = @switch };
+        var dialog = _dialogService.Show<SwitchUpdateDialog>("Edit Switch", parameters);
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
 
     private async void DeleteSwitch(SwitchAdminResponse @switch)
     {
-        var parameters = new DialogParameters();
-        parameters.Add("EntityName", "switch");
+        var parameters = new DialogParameters {{"EntityName", "switch"}};
+        var result = await _dialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
 
-        var result = await DialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
-
-        if (!result.Cancelled)
-        {
-            var httpResponseBody = await httpClient.Delete<ApiResponse<SwitchAdminResponse>>("api/admin/switches/" + @switch.Id, null);
-            if (httpResponseBody == null || httpResponseBody.Status.Code != 0)
+        if (result.Cancelled) return;
+        
+        await _httpClient.Delete("api/admin/switches/" + @switch.Id,
+            async _ =>
             {
-                if (httpResponseBody != null)
-                    _snackBars.ShowError(httpResponseBody.Status.Message);
-                else
-                    _snackBars.ShowError("Unhandled error");
-            }
-            else
+                await GetListDataFromServer(true);
+            }, async response =>
             {
-                _loading = true;
-                await UpdateTableData(true);
-            }
-        }
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
+    
 
-    private bool FilterFunc1(SwitchAdminResponse device) => FilterFunc(device, searchString1);
-
-    private bool FilterFunc(SwitchAdminResponse device, string searchString)
+    private bool FilterFunc(SwitchAdminResponse device)
     {
-        if (string.IsNullOrWhiteSpace(searchString))
+        if (string.IsNullOrWhiteSpace(_searchString))
             return true;
-        if (device.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Id.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Id.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Ip.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Ip.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Serial.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Serial.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Model.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Model.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Manufacturer.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Manufacturer.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
         return false;
     }

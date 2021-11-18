@@ -1,15 +1,15 @@
 ﻿@page "/users"
 @using ASBDDS.Shared.Models.Responses
-@inject IHttpService httpClient
-@inject IDialogService DialogService
+@inject IHttpService _httpClient
+@inject IDialogService _dialogService
 
-<MudTable Items="@_users" Dense="@dense" Hover="@hover" Loading="@_loading" Bordered="@bordered" Striped="@striped" Filter="new Func<UserAdminResponse,bool>(FilterFunc1)" @bind-SelectedItem="selectedItem1">
+<MudTable Items="@_users" Dense="@true" Hover="@true" Loading="@_loading" Bordered="@true" Striped="@true" Filter="new Func<UserAdminResponse,bool>(FilterFunc)">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Users List</MudText>
         <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
         <MudText Class="small">Add User</MudText>
         <MudSpacer />
-        <MudTextField @bind-Value="searchString1" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
     </ToolBarContent>
     <HeaderContent>
         <MudTh>Created</MudTh>
@@ -39,92 +39,77 @@
 <SnackBars @ref="_snackBars"></SnackBars>
 @code {
     private bool _loading;
-    private bool dense = true;
-    private bool hover = true;
-    private bool striped = true;
-    private bool bordered = true;
-    private string searchString1 = "";
-    private UserAdminResponse selectedItem1 = null;
+    private string _searchString = "";
     private SnackBars _snackBars;
 
     private IEnumerable<UserAdminResponse> _users = new List<UserAdminResponse>();
 
     protected override async Task OnInitializedAsync()
     {
-        await UpdateTableData();
+        await GetListDataFromServer();
     }
 
-    private async Task<int> UpdateTableData(bool StateChanged = false)
+    private async Task GetListDataFromServer(bool stateHasChanged = false)
     {
-        var responseBody = await httpClient.Get<ApiResponse<List<UserAdminResponse>>>("api/admin/users/");
-        _users = responseBody.Data;
+        _loading = true;
+        await _httpClient.Get<List<UserAdminResponse>>("api/admin/users/",
+            async response =>
+            {
+                await Task.Run(() => _users = response.Data);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
 
         _loading = false;
-        if (StateChanged) StateHasChanged();
-        return 0;
+        if (stateHasChanged) 
+            StateHasChanged();
     }
 
     private async void ShowCreateDialog()
     {
-        var dialog = DialogService.Show<UserCreateDialog>("Create User");
+        var dialog = _dialogService.Show<UserCreateDialog>("Create User");
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
 
     private async void ShowUpdateDialog(UserAdminResponse user)
     {
         var parameters = new DialogParameters { ["User"] = user };
-        var dialog = DialogService.Show<UserUpdateDialog>("Edit User", parameters);
+        var dialog = _dialogService.Show<UserUpdateDialog>("Edit User", parameters);
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
 
     private async void DisableUser(UserAdminResponse user)
     {
-        var parameters = new DialogParameters();
-        parameters.Add("EntityName", "user");
-
-        var result = await DialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
-
-        if (!result.Cancelled)
-        {
-            var httpResponseBody = await httpClient.Delete<ApiResponse<SwitchAdminResponse>>("api/admin/users/" + user.Id, null);
-            if (httpResponseBody == null || httpResponseBody.Status.Code != 0)
+        var parameters = new DialogParameters {{"EntityName", "user"}};
+        var result = await _dialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
+        if (result.Cancelled) return;
+        
+        await _httpClient.Delete("api/admin/users/" + user.Id,
+            async _ =>
             {
-                if (httpResponseBody != null)
-                    _snackBars.ShowError(httpResponseBody.Status.Message);
-                else
-                    _snackBars.ShowError("Unhandled error");
-            }
-            else
+                await GetListDataFromServer(true);
+            }, async response =>
             {
-                _loading = true;
-                await UpdateTableData(true);
-            }
-        }
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 
-    private bool FilterFunc1(UserAdminResponse user) => FilterFunc(user, searchString1);
-
-    private bool FilterFunc(UserAdminResponse user, string searchString)
+    private bool FilterFunc(UserAdminResponse user)
     {
-        if (string.IsNullOrWhiteSpace(searchString))
+        if (string.IsNullOrWhiteSpace(_searchString))
             return true;
-        if (user.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (user.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (user.UserName.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (user.UserName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (user.LastName.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (user.LastName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (user.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (user.Email.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
         return false;
     }

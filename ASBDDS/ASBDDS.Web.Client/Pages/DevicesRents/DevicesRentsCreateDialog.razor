@@ -1,9 +1,5 @@
 ﻿@using ASBDDS.Shared.Models.Requests
-@using ASBDDS.Shared.Models.Responses
-@using ASBDDS.Shared.Models.Database.DataDb
-@using Newtonsoft.Json
 @using ASBDDS.Shared.Helpers
-@using System.Text
 @inject IHttpService _httpClient
 
 <MudDialog DisableSidePadding="true">
@@ -57,15 +53,14 @@
 
     private async void Create()
     {
-        var apiResp = await _httpClient.Post<ApiResponse<DeviceRentUserPostRequest>>("api/devices/rents/", _devRentAdminPostRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Post<DeviceRentUserPostRequest>("api/devices/rents/", _devRentAdminPostRequest,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            },
+            async response =>
+            {
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
     }
 }

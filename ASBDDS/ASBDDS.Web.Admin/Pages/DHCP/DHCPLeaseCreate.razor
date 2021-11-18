@@ -28,15 +28,13 @@
 
     private async void Create()
     {
-        var apiResp = await _httpClient.Put<ApiResponse<DeviceRentUserResponse>>("api/admin/dhcp/leases/" + MacAddress + "/make-static?ip=" + IpAddress, null);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Put<DeviceRentUserResponse>("api/admin/dhcp/leases/" + MacAddress + "/make-static?ip=" + IpAddress, null,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }

@@ -1,16 +1,15 @@
 ﻿@page "/devices"
-@using System.Net.Http.Json
 @using ASBDDS.Shared.Models.Responses
-@inject IHttpService httpClient
-@inject IDialogService DialogService
+@inject IHttpService _httpClient
+@inject IDialogService _dialogService
 
-<MudTable Items="@Devices" Dense="@dense" Hover="@hover" Loading="@_loading" LoadingProgressColor="Color.Info" Bordered="@bordered" Striped="@striped" Filter="new Func<DeviceAdminResponse,bool>(FilterFunc1)" @bind-SelectedItem="selectedItem1">
+<MudTable Items="@_devices" Dense="@true" Hover="@true" Loading="@_loading" LoadingProgressColor="Color.Info" Bordered="@true" Striped="@true" Filter="new Func<DeviceAdminResponse,bool>(FilterFunc)">
     <ToolBarContent>
         <MudText Typo="Typo.h6">Devices List</MudText>
         <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
         <MudText Class="small">Add Device</MudText>
         <MudSpacer />
-        <MudTextField @bind-Value="searchString1" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
     </ToolBarContent>
     <HeaderContent>
         <MudTh></MudTh>
@@ -50,138 +49,110 @@
 <SnackBars @ref="_snackBars"></SnackBars>
 @code {
     private bool _loading;
-    private bool dense = true;
-    private bool hover = true;
-    private bool striped = true;
-    private bool bordered = true;
-    private string searchString1 = "";
-    private DeviceAdminResponse selectedItem1 = null;
-    private HashSet<DeviceAdminResponse>
-    selectedItems = new HashSet<DeviceAdminResponse>();
+    private string _searchString = "";
     private SnackBars _snackBars;
 
-    private IEnumerable<DeviceAdminResponse>
-    Devices = new List<DeviceAdminResponse>();
+    private IEnumerable<DeviceAdminResponse> _devices = new List<DeviceAdminResponse>();
 
     protected override async Task OnInitializedAsync()
     {
-        await UpdateTableData();
+        await GetListDataFromServer();
     }
 
-    private async Task<int> UpdateTableData(bool StateChanged = false)
+    private async Task GetListDataFromServer(bool stateHasChanged = false)
     {
-        var responseBody = await httpClient.Get<ApiResponse<List<DeviceAdminResponse>>>("api/admin/devices/");
-
-        Devices = responseBody.Data;
+        _loading = true;
+        await _httpClient.Get<List<DeviceAdminResponse>>("api/admin/devices/",
+            async response =>
+            {
+                await Task.Run(() => _devices = response.Data);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
 
         _loading = false;
-        if (StateChanged) StateHasChanged();
-        return 0;
+        if (stateHasChanged) 
+            StateHasChanged();
     }
 
     private async void ShowCreateDialog()
     {
-        var dialog = DialogService.Show<DeviceCreateDialog>("Create Device");
+        var dialog = _dialogService.Show<DeviceCreateDialog>("Create Device");
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
 
     private async void ShowUpdateDialog(DeviceAdminResponse device)
     {
-        var parameters = new DialogParameters { ["_device"] = device };
-        var dialog = DialogService.Show<DeviceUpdateDialog>("Edit Device", parameters);
+        var parameters = new DialogParameters { ["Device"] = device };
+        var dialog = _dialogService.Show<DeviceUpdateDialog>("Edit Device", parameters);
         var result = await dialog.Result;
-        if (!result.Cancelled)
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
     }
 
     private async void DeleteDevice(DeviceAdminResponse device)
     {
-        var parameters = new DialogParameters();
-        parameters.Add("EntityName", "device");
-
-        var result = await DialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
-
-        if (!result.Cancelled)
-        {
-            var httpResponseBody = await httpClient.Delete<ApiResponse<DeviceAdminResponse>>("api/admin/devices/" + device.Id, null);
-            if (httpResponseBody == null || httpResponseBody.Status.Code != 0)
+        var parameters = new DialogParameters {{"EntityName", "device"}};
+        var result = await _dialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
+        if (result.Cancelled) return;
+        
+        await _httpClient.Delete<DeviceAdminResponse>("api/admin/devices/" + device.Id,
+            async _ =>
             {
-                if (httpResponseBody != null)
-                    _snackBars.ShowError(httpResponseBody.Status.Message);
-                else
-                    _snackBars.ShowError("Unhandled error");
-            }
-            else
+                await GetListDataFromServer(true);
+            }, async response =>
             {
-                _loading = true;
-                await UpdateTableData(true);
-            }
-        }
+                await _snackBars.ShowError(response.Status.Message);
+        });
     }
 
     private async void PowerOffDevice(DeviceAdminResponse device)
     {
         _loading = true;
-        var httpResponseBody = await httpClient.Post<ApiResponse<DeviceAdminResponse>>("api/admin/devices/" + device.Id + "/poweroff", null);
-        if (httpResponseBody == null || httpResponseBody.Status.Code != 0)
-        {
-            if (httpResponseBody != null)
-                _snackBars.ShowError(httpResponseBody.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        await _httpClient.Post<DeviceAdminResponse>("api/admin/devices/" + device.Id + "/poweroff", null,
+            async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
     
 
     private async void PowerOnDevice(DeviceAdminResponse device)
     {
         _loading = true;
-        var httpResponseBody = await httpClient.Post<ApiResponse<DeviceAdminResponse>>("api/admin/devices/" + device.Id + "/poweron", null);
-        if (httpResponseBody == null || httpResponseBody.Status.Code != 0)
-        {
-            if (httpResponseBody != null)
-                _snackBars.ShowError(httpResponseBody.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-        {
-            _loading = true;
-            await UpdateTableData(true);
-        }
+        await _httpClient.Post<ApiResponse<DeviceAdminResponse>>("api/admin/devices/" + device.Id + "/poweron", null,
+            async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 
-    private bool FilterFunc1(DeviceAdminResponse device) => FilterFunc(device, searchString1);
-
-    private bool FilterFunc(DeviceAdminResponse device, string searchString)
+    private bool FilterFunc(DeviceAdminResponse device)
     {
-        if (string.IsNullOrWhiteSpace(searchString))
+        if (string.IsNullOrWhiteSpace(_searchString))
             return true;
-        if (device.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Id.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Id.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Model.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Model.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Manufacturer.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Manufacturer.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.Serial.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.Serial.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (device.MacAddress.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+        if (device.MacAddress.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
             return true;
+        
         return false;
     }
 }

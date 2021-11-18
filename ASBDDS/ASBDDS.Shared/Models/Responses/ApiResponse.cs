@@ -19,14 +19,10 @@ namespace ASBDDS.Shared.Models.Responses
 
     }
 
-    public class ApiResponse<T>
+    public class ApiResponse<T> : ApiResponse
     {
-        public ApiResponse()
-        {
-            Status = new ResponseStatus();
-        }
+        public ApiResponse(): base(){}
 
-        public ResponseStatus Status { get; }
         public T Data { get; set; }
     }
 

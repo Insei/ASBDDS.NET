@@ -1,6 +1,5 @@
 ﻿@using ASBDDS.Shared.Models.Requests
-@using ASBDDS.Shared.Models.Responses
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
@@ -8,9 +7,6 @@
             <MudItem xs="12">
                 <MudTextField Class="my-2" @bind-Value="@_projectUserPostRequest.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
-            @*<MudItem xs="12">
-                <MudTextField Class="my-2" @bind-Value="@projectUserPostRequest." Label="Default Vlan" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
-            </MudItem>*@
         </MudContainer>
     </DialogContent>
     <DialogActions>
@@ -35,15 +31,13 @@
 
     private async void Create()
     {
-        var apiResp = await httpClient.Post<ApiResponse<ProjectUserPostRequest>>("api/projects", _projectUserPostRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Post<ProjectUserPostRequest>(
+            "api/projects", _projectUserPostRequest, async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
     }
 }

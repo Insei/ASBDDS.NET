@@ -80,22 +80,22 @@
 
     protected override void OnInitialized()
     {
-        var dbcc = DbConsoleDto;
-        var tts = DbConsoleDto.SerialSettings;
+        var dbc = DbConsoleDto;
+        var dbcss = DbConsoleDto.SerialSettings;
         
         _consoleUpdateDto = new AdminDbConsoleUpdateDto
         {
-            Name = DbConsoleDto.Name,
-            Type = DbConsoleDto.Type,
-            Disabled = DbConsoleDto.Disabled,
+            Name = dbc.Name,
+            Type = dbc.Type,
+            Disabled = dbc.Disabled,
             SerialSettings =
             new AdminSerialPortSettingsUpdateDto() {
-                Handshake = DbConsoleDto.SerialSettings.Handshake,
-                Parity = DbConsoleDto.SerialSettings.Parity,
-                BaudRate = DbConsoleDto.SerialSettings.BaudRate,
-                PortName = DbConsoleDto.SerialSettings.PortName,
-                DataBits = DbConsoleDto.SerialSettings.DataBits,
-                StopBits = DbConsoleDto.SerialSettings.StopBits
+                Handshake = dbcss.Handshake,
+                Parity = dbcss.Parity,
+                BaudRate = dbcss.BaudRate,
+                PortName = dbcss.PortName,
+                DataBits = dbcss.DataBits,
+                StopBits = dbcss.StopBits
             }
         };
     }
@@ -103,15 +103,13 @@
     private async void Update()
     {
        
-        var apiResp = await _httpClient.Put<ApiResponse<AdminDbConsoleDto>>("api/admin/consoles/" + DbConsoleDto.Id, _consoleUpdateDto);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        var apiResp = await _httpClient.Put<AdminDbConsoleDto>("api/admin/consoles/" + DbConsoleDto.Id, _consoleUpdateDto,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }

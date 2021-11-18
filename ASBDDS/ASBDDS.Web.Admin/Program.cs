@@ -22,7 +22,7 @@ namespace ASBDDS.Web.Admin
             builder.Services.AddBlazoredLocalStorage();
             builder.Services.AddAuthorizationCore();
             builder.Services.AddScoped(
-                sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Replace("admin/", "")) });
+                _ => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Replace("admin/", "")) });
             builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
             builder.Services.AddScoped<IHttpService, HttpService>();
             builder.Services.AddScoped<AuthenticationStateProvider, ApiAuthenticationStateProvider>();

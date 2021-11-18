@@ -1,7 +1,6 @@
 ﻿@using ASBDDS.Shared.Models.Requests
 @using ASBDDS.Shared.Models.Responses
-@using Newtonsoft.Json
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog  DisableSidePadding="true">
     <DialogContent>
@@ -33,22 +32,20 @@
 
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
-    private UserAdminPostRequest _userAdminPostRequest = new UserAdminPostRequest();
+    private readonly UserAdminPostRequest _userAdminPostRequest = new UserAdminPostRequest();
     private SnackBars _snackBars;
 
     void Cancel() => MudDialog.Cancel();
 
     private async void Create()
     {
-        var apiResp = await httpClient.Post<ApiResponse<UserAdminPostRequest>>("api/admin/users/", _userAdminPostRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Post<ApiResponse<UserAdminPostRequest>>("api/admin/users/", _userAdminPostRequest,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }

@@ -1,5 +1,4 @@
-﻿@using ASBDDS.Shared.Models.Responses
-@using ASBDDS.Shared.Dtos.DbConsole
+﻿@using ASBDDS.Shared.Dtos.DbConsole
 @using ASBDDS.Shared.Dtos.SerialPortSettings
 @using ASBDDS.Shared.Models.Database.DataDb
 @inject IHttpService _httpClient
@@ -8,9 +7,9 @@
     <DialogContent>
         <MudContainer xs="12" Class="mx-auto px-4 justify-center my-4 mud-text-align-center" Style="max-height: 700px; width: 400px; overflow-y: scroll">
             <MudItem xs="12">
-                <MudTextField Class="my-2" @bind-Value="@createConsoleDto.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+                <MudTextField Class="my-2" @bind-Value="@_createConsoleDto.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
-            <MudSelect Class="my-2" @bind-Value="@createConsoleDto.Type" Label="Type" Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelect Class="my-2" @bind-Value="@_createConsoleDto.Type" Label="Type" Variant="Variant.Outlined" Margin="Margin.Dense">
                 @{
                     foreach (var consoleType in (DbConsoleType[])Enum.GetValues(typeof(DbSerialPortStopBits)))
                     {
@@ -18,21 +17,21 @@
                     }
                 }
             </MudSelect>
-            <MudCheckBox @bind-Checked="@createConsoleDto.Disabled" Dense="false" Color="Color.Primary" Label="Disabled"></MudCheckBox>
-            @if (createConsoleDto.Type == DbConsoleType.Serial)
+            <MudCheckBox @bind-Checked="@_createConsoleDto.Disabled" Dense="false" Color="Color.Primary" Label="Disabled"></MudCheckBox>
+            @if (_createConsoleDto.Type == DbConsoleType.Serial)
             {
                 <MudDivider Class="mt-2 mb-1"></MudDivider>
                 <b>Serial Settings</b>
                 <MudItem xs="12">
-                    <MudTextField Class="my-2" @bind-Value="@createConsoleDto.SerialSettings.PortName" Label="Port name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+                    <MudTextField Class="my-2" @bind-Value="@_createConsoleDto.SerialSettings.PortName" Label="Port name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
                 </MudItem>
                 <MudItem xs="12">
-                    <MudTextField Class="my-2" @bind-Value="@createConsoleDto.SerialSettings.BaudRate" Label="Baud rate" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+                    <MudTextField Class="my-2" @bind-Value="@_createConsoleDto.SerialSettings.BaudRate" Label="Baud rate" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
                 </MudItem>
                 <MudItem xs="12">
-                    <MudTextField Class="my-2" @bind-Value="@createConsoleDto.SerialSettings.DataBits" Label="Data bits" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+                    <MudTextField Class="my-2" @bind-Value="@_createConsoleDto.SerialSettings.DataBits" Label="Data bits" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
                 </MudItem>
-                <MudSelect Class="my-2" @bind-Value="@createConsoleDto.SerialSettings.StopBits" Label="Stop bits" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelect Class="my-2" @bind-Value="@_createConsoleDto.SerialSettings.StopBits" Label="Stop bits" Variant="Variant.Outlined" Margin="Margin.Dense">
                     @{
                         foreach (var stopBit in (DbSerialPortStopBits[])Enum.GetValues(typeof(DbSerialPortStopBits)))
                         {
@@ -40,7 +39,7 @@
                         }
                     }
                 </MudSelect>
-                <MudSelect Class="my-2" @bind-Value="@createConsoleDto.SerialSettings.Parity" Label="Parity" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelect Class="my-2" @bind-Value="@_createConsoleDto.SerialSettings.Parity" Label="Parity" Variant="Variant.Outlined" Margin="Margin.Dense">
                     @{
                         foreach (var parity in (DbSerialPortParity[])Enum.GetValues(typeof(DbSerialPortParity)))
                         {
@@ -48,7 +47,7 @@
                         }
                     }
                 </MudSelect>
-                <MudSelect Class="my-2" @bind-Value="@createConsoleDto.SerialSettings.Handshake" Label="Parity" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelect Class="my-2" @bind-Value="@_createConsoleDto.SerialSettings.Handshake" Label="Parity" Variant="Variant.Outlined" Margin="Margin.Dense">
                     @{
                         foreach (var handshake in (DbSerialPortHandshake[])Enum.GetValues(typeof(DbSerialPortHandshake)))
                         {
@@ -68,7 +67,7 @@
 @code {
 
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
-    private AdminDbConsoleCreateDto createConsoleDto { get; set; } = new AdminDbConsoleCreateDto() { SerialSettings = new AdminSerialPortSettingsCreateDto()};
+    private AdminDbConsoleCreateDto _createConsoleDto { get; } = new AdminDbConsoleCreateDto() { SerialSettings = new AdminSerialPortSettingsCreateDto()};
 
     private SnackBars _snackBars;
 
@@ -76,15 +75,13 @@
 
     private async void Create()
     {
-        var apiResp = await _httpClient.Post<ApiResponse<AdminDbConsoleDto>>("api/admin/consoles/", createConsoleDto);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if (apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Post<AdminDbConsoleDto>("api/admin/consoles/", _createConsoleDto, 
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }

@@ -1,10 +1,7 @@
 ﻿@using ASBDDS.Shared.Models.Requests
 @using ASBDDS.Shared.Models.Responses
-@using ASBDDS.Shared.Models.Database.DataDb
-@using Newtonsoft.Json
 @using ASBDDS.Shared.Helpers
-@using System.Text
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog  DisableSidePadding="true">
     <DialogContent>
@@ -51,7 +48,7 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Class="ma-n1" OnClick="@(() => DeleteDevice(devLimit))" />
             </MudItem>
             }
-            <MudIconButton Class="d-flex flex-row my-n1" Icon="@Icons.Material.Rounded.Add" OnClick="@AddPort" Color="Color.Success" aria-label="add"></MudIconButton>
+            <MudIconButton Class="d-flex flex-row my-n1" Icon="@Icons.Material.Rounded.Add" OnClick="@AddDeviceLimit" Color="Color.Success" aria-label="add"></MudIconButton>
         </MudContainer>
     </DialogContent>
     <DialogActions>
@@ -71,11 +68,13 @@
 
     protected override void OnInitialized()
     {
-        _projectAdminPostRequest = new ProjectAdminPostRequest();
-        _projectAdminPostRequest.ProjectDeviceLimits = new List<DeviceLimitResponse>();
+        _projectAdminPostRequest = new ProjectAdminPostRequest
+        {
+            ProjectDeviceLimits = new List<DeviceLimitResponse>()
+        };
     }
 
-    private void AddPort()
+    private void AddDeviceLimit()
     {
         _projectAdminPostRequest.ProjectDeviceLimits.Add(new DeviceLimitResponse());
     }
@@ -87,15 +86,13 @@
 
     private async void Create()
     {
-        var apiResp = await httpClient.Post<ApiResponse<ProjectAdminPostRequest>>("api/admin/projects", _projectAdminPostRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Post<ProjectAdminPostRequest>("api/admin/projects", _projectAdminPostRequest,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }

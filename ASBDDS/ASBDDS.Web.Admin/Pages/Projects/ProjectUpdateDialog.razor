@@ -1,10 +1,7 @@
 ﻿@using ASBDDS.Shared.Models.Requests
 @using ASBDDS.Shared.Models.Responses
-@using ASBDDS.Shared.Models.Database.DataDb
-@using Newtonsoft.Json
 @using ASBDDS.Shared.Helpers
-@using System.Text
-@inject IHttpService httpClient
+@inject IHttpService _httpClient
 
 <MudDialog DisableSidePadding="true">
     <DialogContent>
@@ -54,7 +51,7 @@
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Class="ma-n1" OnClick="@(() => DeleteDevice(devLimit))" />
                 </MudItem>
             }
-            <MudIconButton Class="d-flex flex-row my-n1" Icon="@Icons.Material.Rounded.Add" OnClick="@AddPort" Color="Color.Success" aria-label="add"></MudIconButton>
+            <MudIconButton Class="d-flex flex-row my-n1" Icon="@Icons.Material.Rounded.Add" OnClick="@AddDeviceLimit" Color="Color.Success" aria-label="add"></MudIconButton>
         </MudContainer>
     </DialogContent>
     <DialogActions>
@@ -67,7 +64,7 @@
 
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
-    [Parameter] public ProjectAdminResponse _project { get; set; } = new ProjectAdminResponse();
+    [Parameter] public ProjectAdminResponse Project { get; set; } = new ProjectAdminResponse();
 
     private ProjectAdminPutRequest _projectAdminPutRequest;
     private SnackBars _snackBars;
@@ -76,17 +73,19 @@
 
     protected override void OnInitialized()
     {
-        _projectAdminPutRequest = new ProjectAdminPutRequest();
-        _projectAdminPutRequest.ProjectDeviceLimits = new List<DeviceLimitResponse>();
+        _projectAdminPutRequest = new ProjectAdminPutRequest
+        {
+            ProjectDeviceLimits = new List<DeviceLimitResponse>(),
+            Name = Project.Name,
+            AllowCustomBootloaders = Project.AllowCustomBootloaders,
+            DefaultVlan = Project.DefaultVlan
+        };
 
-        _projectAdminPutRequest.Name = _project.Name;
-        _projectAdminPutRequest.AllowCustomBootloaders = _project.AllowCustomBootloaders;
-        _projectAdminPutRequest.DefaultVlan = _project.DefaultVlan;
-        _projectAdminPutRequest.ProjectDeviceLimits = _project.DeviceLimits;
+        _projectAdminPutRequest.ProjectDeviceLimits = Project.DeviceLimits;
 
     }
 
-    private void AddPort()
+    private void AddDeviceLimit()
     {
         _projectAdminPutRequest.ProjectDeviceLimits.Add(new DeviceLimitResponse());
     }
@@ -98,15 +97,13 @@
 
     private async void Create()
     {
-        var apiResp = await httpClient.Put<ApiResponse<ProjectAdminPutRequest>>("api/admin/projects/" + _project.Id, _projectAdminPutRequest);
-        if (apiResp == null || apiResp.Status.Code != 0)
-        {
-            if(apiResp != null)
-                _snackBars.ShowError(apiResp.Status.Message);
-            else
-                _snackBars.ShowError("Unhandled error");
-        }
-        else
-            MudDialog.Close(DialogResult.Ok(true));
+        await _httpClient.Put<ProjectAdminPutRequest>("api/admin/projects/" + Project.Id, _projectAdminPutRequest,
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+               await _snackBars.ShowError(response.Status.Message);
+            });
     }
 }
