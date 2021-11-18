@@ -18,12 +18,10 @@ namespace ASBDDS.API.Controllers
     public class ProjectsController : ControllerBase
     {
         private readonly DataDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ProjectsController(DataDbContext context, UserManager<ApplicationUser> userManager)
+        public ProjectsController(DataDbContext context)
         {
             _context = context;
-            _userManager = userManager;
         }
 
         /// <summary>
@@ -95,7 +93,7 @@ namespace ASBDDS.API.Controllers
             try
             {
                 var project = await _context.Projects.Where(p => p.Id == id).Include(p => p.ProjectDeviceLimits).FirstOrDefaultAsync();
-                var deviceLimits = project.ProjectDeviceLimits;
+                var deviceLimits = project?.ProjectDeviceLimits;
 
                 if (project == null)
                 {
@@ -139,7 +137,7 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<ProjectAdminResponse>();
             try
             {
-                var user = await _userManager.FindByNameAsync(HttpContext.User.Identity.Name);
+                var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(HttpContext.User.Identity.Name));
                 var project = new Project()
                 {
                     Name = projectReq.Name,
@@ -215,7 +213,7 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<List<ProjectUserResponse>>();
             try
             {
-                var user = await _userManager.FindByNameAsync(HttpContext.User.Identity.Name);
+                var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(HttpContext.User.Identity.Name));
                 var activeProjects = await _context.Projects.Where(p => !p.Disabled && p.Creator == user).ToListAsync();
                 var _projects = new List<ProjectUserResponse>();
                 foreach (var project in activeProjects)
@@ -243,7 +241,7 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<ProjectUserResponse>();
             try
             {
-                var user = await _userManager.FindByNameAsync(HttpContext.User.Identity.Name);
+                var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(HttpContext.User.Identity.Name));
                 var project = await _context.Projects.Where(p => p.Id == id && !p.Disabled && p.Creator == user)
                     .Include(p => p.ProjectDeviceLimits).FirstOrDefaultAsync();
 
@@ -276,7 +274,7 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<ProjectUserResponse>();
             try
             {
-                var user = await _userManager.FindByNameAsync(HttpContext.User.Identity.Name);
+                var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(HttpContext.User.Identity.Name));
                 var project = await _context.Projects.Where(p => !p.Disabled && p.Id == id && p.Creator == user).FirstOrDefaultAsync();
                 if (project == null)
                 {
@@ -343,7 +341,7 @@ namespace ASBDDS.API.Controllers
             try
             {
                 //TODO: We can't delete project if in this project exist active device rents.
-                var user = await _userManager.FindByNameAsync(HttpContext.User.Identity.Name);
+                var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(HttpContext.User.Identity.Name));
                 var project = await _context.Projects.Where(p => p.Id == id && !p.Disabled && p.Creator == user)
                     .Include(p => p.ProjectDeviceLimits).FirstOrDefaultAsync();
                 if (project == null)
