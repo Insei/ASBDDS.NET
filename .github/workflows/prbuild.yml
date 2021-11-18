@@ -6,6 +6,11 @@ on:  # yamllint disable-line rule:truthy
 jobs:
   build:
     runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
+        os: [win, linux]
     steps:
       - name: Get ASBDDS
         uses: actions/checkout@v2
@@ -13,14 +18,15 @@ jobs:
           submodules: recursive
       - name: Setup packages
         run: |
-            sudo apt-get update
-            sudo apt-get remove docker docker-engine docker.io containerd runc
-            sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --no-tty --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-            echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-            sudo apt-get update && sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-            sudo apt-get install -y jq make git expect qemu binfmt-support qemu-user-static qemu-utils qemu-system-x86 qemu-system-aarch64
-            docker buildx create --use
+            sudo apt update
+            sudo apt install -y apt-transport-https
+            sudo apt install -y dotnet-sdk-6.0
       - name: Build ASBDDS
         run: |
-            cd ASBDDS && docker buildx build --platform linux/arm64/v8,linux/amd64 -t goodmobiledevices/asbdds .
+            dotnet publish ASBDDS --self-contained -c Release -r ${{ matrix.os }}-${{ matrix.arch }} -o ./build/${{ matrix.os }}-${{ matrix.arch }}
+            tar -zcvf asbdds-${{ matrix.os }}-${{ matrix.arch }}.tar.gz ./build/${{ matrix.os }}-${{ matrix.arch }}
+      - name: Upload ASBDDS
+        uses: actions/upload-artifact@v2
+        with:
+          name: asbdds-${{ matrix.os }}-${{ matrix.arch }}
+          path: asbdds-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
