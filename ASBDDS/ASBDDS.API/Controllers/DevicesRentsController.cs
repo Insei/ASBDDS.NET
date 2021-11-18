@@ -10,13 +10,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using ASBDDS.API.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Primitives;
 using ASBDDS.API.Models.Utils;
 using ASBDDS.Shared.Dtos;
-using ASBDDS.Shared.Helpers;
-using ASBDDS.Shared.Interfaces;
 using AutoMapper;
-using Microsoft.AspNetCore.Identity;
 
 namespace ASBDDS.API.Controllers
 {
@@ -64,13 +60,8 @@ namespace ASBDDS.API.Controllers
                     .Include(d => d.Device)
                     .Include(d => d.Project)
                     .Include(d => d.Creator)
-                    .ToListAsync();
-                var _devicesRents = new List<DeviceRentUserResponse>();
-                foreach (var devRent in devicesRents)
-                {
-                    _devicesRents.Add(new DeviceRentUserResponse(devRent));
-                }
-                resp.Data = _devicesRents;
+                    .Select(rent => new DeviceRentUserResponse(rent)).ToListAsync();
+                resp.Data = devicesRents;
             }
             catch (Exception e)
             {
@@ -230,7 +221,9 @@ namespace ASBDDS.API.Controllers
                 // We setup Creating state, after ipxe.cfg url is called this state change to provisioning
                 deviceRent.Device.MachineState = DeviceMachineState.Creating;
 
+#pragma warning disable 4014
                 _devicePowerControl.SwitchPower(deviceRent.Device, DevicePowerAction.PowerOn);
+#pragma warning restore 4014
                 
                 deviceRent.Device.PowerState = DevicePowerState.PowerOn;
                 _context.Entry(deviceRent.Device).State = EntityState.Modified;
@@ -284,12 +277,13 @@ namespace ASBDDS.API.Controllers
                 BootloaderSetupHelper.MakeIpxe(deviceRent.Device);
                 
                 // Reboot device via POE on port
-                var device = deviceRent.Device;
-                _devicePowerControl.SwitchPower(device, DevicePowerAction.Reboot);
+#pragma warning disable 4014
+                _devicePowerControl.SwitchPower(deviceRent.Device, DevicePowerAction.Reboot);
+#pragma warning restore 4014
 
-                device.MachineState = DeviceMachineState.Erasing;
+                deviceRent.Device.MachineState = DeviceMachineState.Erasing;
                 
-                _context.Entry(device).State = EntityState.Modified;
+                _context.Entry(deviceRent.Device).State = EntityState.Modified;
                 _context.Entry(deviceRent).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 resp.Data = new DeviceRentUserResponse(deviceRent);
@@ -340,7 +334,9 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
                 var device = deviceRent.Device;
+#pragma warning disable 4014
                 _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOff);
+#pragma warning restore 4014
                 device.PowerState = DevicePowerState.PowerOff;
                 
                 _context.Entry(device).State = EntityState.Modified;
@@ -392,7 +388,9 @@ namespace ASBDDS.API.Controllers
                 }
                 
                 var device = deviceRent.Device;
+#pragma warning disable 4014
                 _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOn);
+#pragma warning restore 4014
                 device.PowerState = DevicePowerState.PowerOn;
                 
                 _context.Entry(device).State = EntityState.Modified;

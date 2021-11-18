@@ -156,8 +156,8 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<DeviceAdminResponse>();
             try
             {
-                var _switchPort = await _context.SwitchPorts.FindAsync(deviceReq.SwitchPortId);
-                if(_switchPort == null)
+                var switchPort = await _context.SwitchPorts.FindAsync(deviceReq.SwitchPortId);
+                if(switchPort == null)
                 {
                     resp.Status.Code = 1;
                     resp.Status.Message = "Switch port not found";
@@ -173,7 +173,7 @@ namespace ASBDDS.API.Controllers
                     Manufacturer = deviceReq.Manufacturer,
                     Serial = deviceReq.Serial,
                     PowerState = DevicePowerState.PowerOff,
-                    SwitchPort = _switchPort,
+                    SwitchPort = switchPort,
                     MacAddress = deviceReq.MacAddress,
                     Model = deviceReq.Model,
                     Name = deviceReq.Name,
@@ -277,12 +277,16 @@ namespace ASBDDS.API.Controllers
 
                 if (enable)
                 {
+#pragma warning disable 4014
                     _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOn);
+#pragma warning restore 4014
                     device.PowerState = DevicePowerState.PowerOn;
                 }
                 else
                 {
+#pragma warning disable 4014
                     _devicePowerControl.SwitchPower(device, DevicePowerAction.PowerOff);
+#pragma warning restore 4014
                     device.PowerState = DevicePowerState.PowerOff;
                 }
 

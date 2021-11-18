@@ -20,7 +20,7 @@ namespace ASBDDS.API.Models
                     consolesManager.Add(console);
                     consolesManager.StartListening(console);
                 }
-                catch (Exception _)
+                catch (Exception)
                 {
                     // ignored
                 }

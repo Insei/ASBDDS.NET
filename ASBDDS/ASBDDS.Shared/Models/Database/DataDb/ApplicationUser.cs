@@ -14,7 +14,7 @@ namespace ASBDDS.Shared.Models.Database.DataDb
         public Guid? EditorId { get; set; }
         public Guid? CreatorId { get; set; }
         public bool Disabled { get; set; }
-        public string? RefreshToken { get; set; }
+        public string RefreshToken { get; set; }
 
         public ApplicationUser() {}
         public ApplicationUser(UserAdminPostRequest user)

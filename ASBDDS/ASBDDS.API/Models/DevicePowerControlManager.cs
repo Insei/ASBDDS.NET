@@ -26,33 +26,30 @@ namespace ASBDDS.API.Models
                     .Include(d => d.SwitchPort)
                     .ThenInclude(sp => sp.Switch).FirstOrDefaultAsync(cancellationToken: cancellationToken);
                 IDevicePowerControl powerControl = null;
-                if (deviceWithIncludes.SwitchPort.Switch.Model ==
+                if (deviceWithIncludes?.SwitchPort.Switch.Model ==
                     SwitchHelper.GetModel(SwitchModels.UNIFI_SWITCH_US_24_250W))
                 {
                     powerControl = new UniFiSwitch();
                 }
 
-                if (powerControl != null)
+                if (powerControl == null) return 0;
+                
+                switch (action)
                 {
-                    switch (action)
-                    {
-                        case DevicePowerAction.PowerOff:
-                            return await powerControl?.PowerOff(deviceWithIncludes, cancellationToken);
-                            break;
-                        case DevicePowerAction.PowerOn:
-                            return await powerControl?.PowerOn(deviceWithIncludes, cancellationToken);
-                            break;
-                        case DevicePowerAction.Reboot:
-                            var powerOffResult = await powerControl?.PowerOff(deviceWithIncludes, cancellationToken);
-                            var powerOnResult = await powerControl?.PowerOn(deviceWithIncludes, cancellationToken);
-                            if (powerOffResult == 0 && powerOnResult == 0)
-                                return 0;
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(nameof(action), action, null);
-                    }
-                    return 1;
+                    case DevicePowerAction.PowerOff:
+                        return await powerControl.PowerOff(deviceWithIncludes, cancellationToken);
+                    case DevicePowerAction.PowerOn:
+                        return await powerControl.PowerOn(deviceWithIncludes, cancellationToken);
+                    case DevicePowerAction.Reboot:
+                        var powerOffResult = await powerControl.PowerOff(deviceWithIncludes, cancellationToken);
+                        var powerOnResult = await powerControl.PowerOn(deviceWithIncludes, cancellationToken);
+                        if (powerOffResult == 0 && powerOnResult == 0)
+                            return 0;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(action), action, null);
                 }
+                return 1;
             }
 
             return 0;

@@ -75,7 +75,7 @@ namespace ASBDDS.API.Controllers
             return new MemoryStream(Encoding.UTF8.GetBytes(ipxeCfgReboot));
         }
 
-        private async Task<Stream> GetUserIpxeCfgStream(Device device)
+        private Stream GetUserIpxeCfgStream(Device device)
         {
             Stream ipxeConfigStream = null;
             var deviceRent = _context.DeviceRents.Include(dr => dr.Device).FirstOrDefault(dr => dr.Device.Id == device.Id && dr.Status == DeviceRentStatus.ACTIVE);
@@ -94,7 +94,7 @@ namespace ASBDDS.API.Controllers
             
             await _context.SaveChangesAsync();
             
-            return await GetUserIpxeCfgStream(device);
+            return GetUserIpxeCfgStream(device);
         }
 
         [HttpGet("{macAddress}/ipxe.efi.cfg")]
@@ -118,7 +118,7 @@ namespace ASBDDS.API.Controllers
                         ipxeConfigStream = await OnProvisionComplete(device);
                         break;
                     case DeviceMachineState.IPXEOnly:
-                        ipxeConfigStream = await GetUserIpxeCfgStream(device);
+                        ipxeConfigStream = GetUserIpxeCfgStream(device);
                         break;
                     case DeviceMachineState.Erasing:
                         // power off device

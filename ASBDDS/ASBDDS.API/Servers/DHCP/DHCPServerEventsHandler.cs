@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using ASBDDS.API.Migrations.DataDb;
 using ASBDDS.Shared.Models.Database.DataDb;
 using GitHub.JPMikkers.DHCP;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +9,6 @@ namespace ASBDDS.API.Servers.DHCP
     public static class DHCPServerEventHandler
     {
         private static DataDbContext _context;
-        private static DHCPServer _server;
         private static readonly object _lock = new object();
         private static List<DHCPLeaseDb> _leases;
         public static void Init(DataDbContext context, DHCPServer server)

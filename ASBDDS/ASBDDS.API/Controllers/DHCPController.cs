@@ -1,10 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Threading.Tasks;
 using ASBDDS.Shared.Models.Responses;
 using GitHub.JPMikkers.DHCP;
 using Microsoft.AspNetCore.Authorization;
@@ -15,15 +12,15 @@ namespace ASBDDS.API.Controllers
     [Route("api/admin/dhcp/")]
     [ApiController]
     [Authorize(Roles = "Admin")]
-    public class DHCPController : ControllerBase
+    public class DhcpController : ControllerBase
     {
         private DHCPServer _dhcpServer;
-        public DHCPController(DHCPServer dhcpServer)
+        public DhcpController(DHCPServer dhcpServer)
         {
             _dhcpServer = dhcpServer;
         }
         [HttpGet("leases/")]
-        public async Task<ApiResponse<List<DHCPLeaseAdminResponse>>> GetLeases()
+        public ApiResponse<List<DHCPLeaseAdminResponse>> GetLeases()
         {
             var resp = new ApiResponse<List<DHCPLeaseAdminResponse>>();
             try
@@ -44,7 +41,7 @@ namespace ASBDDS.API.Controllers
         }
 
         [HttpPut("leases/{macAddress}/make-static")]
-        public async Task<ApiResponse> MakeStatic(string macAddress, [FromQuery] string ip)
+        public ApiResponse MakeStatic(string macAddress, [FromQuery] string ip)
         {
             var resp = new ApiResponse();
             try
@@ -77,7 +74,7 @@ namespace ASBDDS.API.Controllers
         }
         
         [HttpPut("leases/{macAddress}/make-dynamic")]
-        public async Task<ApiResponse> MakeDynamic(string macAddress)
+        public ApiResponse MakeDynamic(string macAddress)
         {
             var resp = new ApiResponse();
             try
@@ -102,7 +99,7 @@ namespace ASBDDS.API.Controllers
         }
 
         [HttpDelete("leases/{macAddress}")]
-        public async Task<ApiResponse> DeleteLease(string macAddress)
+        public ApiResponse DeleteLease(string macAddress)
         {
             var resp = new ApiResponse();
             try
