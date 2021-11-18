@@ -52,6 +52,7 @@ namespace ASBDDS.API.Controllers
             }
 
             device.PowerState = DevicePowerState.PowerOff;
+            device.MachineState = DeviceMachineState.Free;
             _context.Entry(device).State = EntityState.Modified;
             
             await _context.SaveChangesAsync();
