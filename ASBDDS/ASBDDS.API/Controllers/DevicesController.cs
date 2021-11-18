@@ -121,6 +121,7 @@ namespace ASBDDS.API.Controllers
                     console = _context.Consoles.FirstOrDefault(c => c.Id == deviceReq.ConsoleId);
                 
                 device.Manufacturer = deviceReq.Manufacturer;
+                device.Updated = DateTime.UtcNow;
                 device.MacAddress = deviceReq.MacAddress;
                 device.Model = deviceReq.Model;
                 device.Name = deviceReq.Name;
@@ -170,8 +171,6 @@ namespace ASBDDS.API.Controllers
                 var device = new Device
                 {
                     Manufacturer = deviceReq.Manufacturer,
-                    Created = DateTime.Now,
-                    Updated = DateTime.Now,
                     Serial = deviceReq.Serial,
                     PowerState = DevicePowerState.PowerOff,
                     SwitchPort = _switchPort,
