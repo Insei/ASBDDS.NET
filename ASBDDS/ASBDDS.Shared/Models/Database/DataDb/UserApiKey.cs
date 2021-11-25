@@ -8,12 +8,11 @@ namespace ASBDDS.Shared.Models.Database.DataDb
     {
         public string Description { get; set; }
         public virtual ApplicationUser Creator { get; set; }
-        public bool ReadOnly { get; set; } = true;
         public Guid Key { get; set; }
 
         public UserApiKey()
         {
-            Key = new Guid();
+            Key = Guid.NewGuid();
         }
     }
 }
