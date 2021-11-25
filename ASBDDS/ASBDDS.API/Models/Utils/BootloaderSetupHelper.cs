@@ -54,7 +54,15 @@ namespace ASBDDS.API.Models.Utils
 
         public static void RemoveDeviceDirectory(Device device)
         {
-            Directory.Delete(Path.Combine(TftpDirectory, device.MacAddress), true);
+            try
+            {
+                Directory.Delete(Path.Combine(TftpDirectory, device.MacAddress), true);
+            }
+            catch (Exception ex)
+            {
+                if (ex is not DirectoryNotFoundException)
+                    throw;
+            }
         }
     }
 }
