@@ -116,7 +116,11 @@ namespace ASBDDS.NET
                     }  
                 });
             });
-            services.AddAutoMapper(typeof(DbConsoleMappings), typeof(SerialPortSettingsMappings), typeof(ConsoleOutputMappings));
+            services.AddAutoMapper(
+                typeof(DbConsoleMappings), 
+                typeof(SerialPortSettingsMappings), 
+                typeof(ConsoleOutputMappings),
+                typeof(UserApiKeyMappings));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
