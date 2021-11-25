@@ -1,0 +1,115 @@
+﻿@page "/apikeys"
+@using Blazored.LocalStorage
+@using ASBDDS.Shared.Dtos.UserApiKey
+@inject IHttpService _httpClient
+@inject IDialogService _dialogService
+@inject ILocalStorageService _localStorageService
+
+<MudTable Items="@_userApiKeys" Dense="@true" Hover="@true" Loading="@_loading" Bordered="@true" Striped="@true" Filter="new Func<UserApiKeyDto,bool>(FilterFunc)">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">API Keys List</MudText>
+        <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
+        <MudText Class="small">Add key</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Created</MudTh>
+        <MudTh>Description</MudTh>
+        <MudTh>Key</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Created">@context.Created</MudTd>
+        <MudTd DataLabel="Description">@context.Description</MudTd>
+        <MudTd DataLabel="Key">@context.Key</MudTd>
+        <MudTd Style="white-space: nowrap; width: 1%;" DataLabel="Options">
+            <MudMenu Label="Options" Size="Size.Small" Dense="true" FullWidth="true" Direction="Direction.Start">
+                <MudMenuItem OnClick="@(() => ShowUpdateDialog(context))">Edit</MudMenuItem>
+                <MudMenuItem OnClick="@(() => DeleteUserApiKey(context))">Delete</MudMenuItem>
+            </MudMenu>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+<SnackBars @ref="_snackBars"></SnackBars>
+
+@code {
+    private bool _loading;
+    private string _searchString = "";
+    private SnackBars _snackBars;
+
+    private IEnumerable<UserApiKeyDto> _userApiKeys = new List<UserApiKeyDto>();
+    
+    private async Task GetListDataFromServer(bool stateHasChanged = false)
+    {
+        _loading = true;
+        await _httpClient.Get<List<UserApiKeyDto>>("api/apikeys/", 
+            async apiResp =>
+            {
+                await Task.Run(() => _userApiKeys = apiResp.Data);
+            }, async apiResp =>
+            {
+                await Task.Run(() => _snackBars.ShowError(apiResp.Status.Message));
+            });
+
+        _loading = false;
+        if (stateHasChanged)
+        {
+            StateHasChanged();
+        }
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await GetListDataFromServer();
+    }
+    
+    private async void ShowCreateDialog()
+    {
+        var dialog = _dialogService.Show<UserApiKeyCreateDialog>("Create User API Key");
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+            await GetListDataFromServer(true);
+    }
+
+    private async void ShowUpdateDialog(UserApiKeyDto userApiKeyDto)
+    {
+        var parameters = new DialogParameters { ["UserApiKeyDto"] = userApiKeyDto };
+        var dialog = _dialogService.Show<UserApiKeyUpdateDialog>("Edit User API Key", parameters);
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+        await GetListDataFromServer(true);
+    }
+
+    private async void DeleteUserApiKey(UserApiKeyDto userApiKeyDto)
+    {
+        var parameters = new DialogParameters {{"EntityName", "User API Key"}};
+
+        var result = await _dialogService.Show<DeleteConfirmDialog>("Delete", parameters).Result;
+
+        if (result.Cancelled) return;
+        
+        await _httpClient.Delete("api/apikeys/" + userApiKeyDto.Id, 
+            async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
+    }
+
+    private bool FilterFunc(UserApiKeyDto userApiKeyDto)
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+        if (userApiKeyDto.Description.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (userApiKeyDto.Id.ToString().Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+}

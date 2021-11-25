@@ -1,0 +1,48 @@
+﻿@using ASBDDS.Shared.Dtos.UserApiKey
+@inject IHttpService _httpClient
+
+<MudDialog DisableSidePadding="true">
+    <DialogContent>
+        <MudContainer xs="12" Class="mx-auto px-4 justify-center my-4 mud-text-align-center" Style="max-height: 700px; width: 400px; overflow-y: scroll">
+            <MudItem xs="12">
+                <MudTextField Class="my-2" @bind-Value="@_userApiKeyUpdateDto.Description" Label="Description" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            </MudItem>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Update">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+<SnackBars @ref="_snackBars"></SnackBars>
+@code {
+
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public UserApiKeyDto UserApiKeyDto { get; set; }
+
+    private UserApiKeyUpdateDto _userApiKeyUpdateDto;
+    private SnackBars _snackBars;
+
+    void Cancel() => MudDialog.Cancel();
+
+    protected override void OnInitialized()
+    {
+        _userApiKeyUpdateDto = new UserApiKeyUpdateDto
+        {
+            Description = UserApiKeyDto.Description
+        };
+    }
+
+    private async void Update()
+    {
+        await _httpClient.Put<UserApiKeyDto>(
+            "api/apikeys/" + UserApiKeyDto.Id, _userApiKeyUpdateDto, 
+            async _ =>
+            {
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await Task.Run(() => _snackBars.ShowError(response.Status.Message));
+            });
+    }
+}
