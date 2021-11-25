@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using ASBDDS.Shared.Models.Database.DataDb;
 using ASBDDS.API.Models;
 using ASBDDS.API.Servers.TFTP;
@@ -11,9 +9,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using System.IO;
+using System.Linq;
 using System.Text.Json.Serialization;
 using ASBDDS.API.Servers.DHCP;
+using ASBDDS.NET.Handlers;
 using ASBDDS.NET.MappingProfiles;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using DHCPServer = ASBDDS.API.Servers.DHCP.DHCPServer;
@@ -53,11 +54,19 @@ namespace ASBDDS.NET
             services.AddSingleton(_ => AuthOptions);
             services.AddSingleton(_ => ConsolesManager);
             services.AddScoped<DevicePowerControlManager>();
-            services.AddAuthentication(option =>  
-                {  
-                    option.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                    option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-  
+            services.AddAuthentication(option =>
+                {
+                    option.DefaultAuthenticateScheme = "smart";
+                    option.DefaultChallengeScheme = "smart";
+                })
+                .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("APIKey", null)
+                .AddPolicyScheme("smart", "Authorization Bearer JWT or user API key", options =>
+                {
+                    options.ForwardDefaultSelector = context =>
+                    {
+                        var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                        return authHeader?.StartsWith("Bearer ") == true ? JwtBearerDefaults.AuthenticationScheme : "APIKey";
+                    };
                 })
                 .AddJwtBearer(options =>
                 {
@@ -114,6 +123,13 @@ namespace ASBDDS.NET
                         new string[] {}  
   
                     }  
+                });
+                c.AddSecurityDefinition("X-API-Key", new OpenApiSecurityScheme()  
+                {  
+                    Name = "X-API-Key",  
+                    Type = SecuritySchemeType.ApiKey,
+                    In = ParameterLocation.Header,
+                    Description = "APIKey Authorization header using the X-API-Key scheme. \r\n\r\n Enter your API key in the text input below.\r\n\r\nExample: \" 12345abcdef\"",  
                 });
             });
             services.AddAutoMapper(
