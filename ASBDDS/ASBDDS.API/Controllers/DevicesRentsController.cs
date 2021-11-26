@@ -22,6 +22,7 @@ namespace ASBDDS.API.Controllers
     [Route("api/devices/rents")]
     public class DevicesRentsController : ControllerBase
     {
+        private const string ProjectIdHeader = "X-Project-Id";
         private readonly DataDbContext _context;
         private readonly DevicePowerControlManager _devicePowerControl;
         private readonly ConsolesManager _consolesManager;
@@ -43,7 +44,7 @@ namespace ASBDDS.API.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public async Task<ApiResponse<List<DeviceRentUserResponse>>> GetUserDevicesRents([FromHeader(Name="ProjectId")][Required] Guid projectId)
+        public async Task<ApiResponse<List<DeviceRentUserResponse>>> GetUserDevicesRents([FromHeader(Name=ProjectIdHeader)][Required] Guid projectId)
         {
             var resp = new ApiResponse<List<DeviceRentUserResponse>>();
             try
@@ -78,7 +79,7 @@ namespace ASBDDS.API.Controllers
         /// <param name="projectId">project id</param>
         /// <returns></returns>
         [HttpGet("{id}")]
-        public async Task<ApiResponse<DeviceRentUserResponse>> GetUserDeviceRent([FromHeader(Name="ProjectId")][Required] Guid projectId, Guid id)
+        public async Task<ApiResponse<DeviceRentUserResponse>> GetUserDeviceRent([FromHeader(Name=ProjectIdHeader)][Required] Guid projectId, Guid id)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
             try
@@ -117,7 +118,7 @@ namespace ASBDDS.API.Controllers
         /// <returns></returns>
         [HttpPut("{id}")]
         public async Task<ApiResponse<DeviceRentUserResponse>> UpdateUserDeviceRent(Guid id, DeviceRentUserPutRequest devRentReq,
-                                                                                        [FromHeader(Name="ProjectId")][Required] Guid projectId)
+                                                                                        [FromHeader(Name=ProjectIdHeader)][Required] Guid projectId)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
             try
@@ -159,7 +160,7 @@ namespace ASBDDS.API.Controllers
         /// <param name="projectId">Project id</param>
         /// <returns></returns>
         [HttpPost]
-        public async Task<ApiResponse<DeviceRentUserResponse>> CreateUserDeviceRent([FromHeader(Name="ProjectId")][Required] Guid projectId, 
+        public async Task<ApiResponse<DeviceRentUserResponse>> CreateUserDeviceRent([FromHeader(Name=ProjectIdHeader)][Required] Guid projectId, 
                                                                                                         DeviceRentUserPostRequest devRentReq)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
@@ -249,7 +250,7 @@ namespace ASBDDS.API.Controllers
         /// <param name="projectId">Project id</param>
         /// <returns></returns>
         [HttpDelete("{id}")]
-        public async Task<ApiResponse<DeviceRentUserResponse>> CloseUserDeviceRent([FromHeader(Name="ProjectId")][Required] Guid projectId, 
+        public async Task<ApiResponse<DeviceRentUserResponse>> CloseUserDeviceRent([FromHeader(Name=ProjectIdHeader)][Required] Guid projectId, 
                                                                                                         Guid id)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
@@ -305,7 +306,7 @@ namespace ASBDDS.API.Controllers
         /// <returns></returns>
         [HttpPost("{id}/poweroff")]
         public async Task<ApiResponse<DeviceRentUserResponse>> PowerOffDeviceByRent(
-            [FromHeader(Name = "ProjectId")] [Required] Guid projectId,
+            [FromHeader(Name=ProjectIdHeader)] [Required] Guid projectId,
             Guid id)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
@@ -359,7 +360,7 @@ namespace ASBDDS.API.Controllers
         /// <returns></returns>
         [HttpPost("{id}/poweron")]
         public async Task<ApiResponse<DeviceRentUserResponse>> PowerOnDeviceByRent(
-            [FromHeader(Name = "ProjectId")] [Required] Guid projectId,
+            [FromHeader(Name=ProjectIdHeader)] [Required] Guid projectId,
             Guid id)
         {
             var resp = new ApiResponse<DeviceRentUserResponse>();
@@ -412,7 +413,7 @@ namespace ASBDDS.API.Controllers
         /// <param name="projectId">project id</param>
         /// <returns></returns>
         [HttpGet("{id}/console/output")]
-        public async Task<ApiResponse<List<ConsoleOutputDto>>> GetDeviceConsoleOutputByRent([FromHeader(Name="ProjectId")][Required] Guid projectId, Guid id)
+        public async Task<ApiResponse<List<ConsoleOutputDto>>> GetDeviceConsoleOutputByRent([FromHeader(Name=ProjectIdHeader)][Required] Guid projectId, Guid id)
         {
             var resp = new ApiResponse<List<ConsoleOutputDto>>();
             try
