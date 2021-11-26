@@ -225,7 +225,7 @@ namespace ASBDDS.Web.Client.Services
             var currentProject = await _localStorageService.GetItemAsync<ProjectUserResponse>("CurrentProject");
             if (currentProject != null)
             {
-                request.Headers.Add("ProjectId", currentProject.Id.ToString());
+                request.Headers.Add("X-Project-Id", currentProject.Id.ToString());
             }
         }
 
