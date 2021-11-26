@@ -90,7 +90,8 @@ namespace ASBDDS.API.Controllers
                     resp.Status.Message = "Project not found";
                     return resp;
                 }
-                var deviceRent = await _context.DeviceRents.Where(dr => dr.Project == project && dr.Closed == null && dr.Id == id).FirstOrDefaultAsync();
+                var deviceRent = await _context.DeviceRents.Where(dr => dr.Project == project && dr.Closed == null && dr.Id == id)
+                    .Include(dr => dr.Device).FirstOrDefaultAsync();
                 if(deviceRent == null)
                 {
                     resp.Status.Code = 1;
