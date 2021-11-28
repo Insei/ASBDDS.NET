@@ -134,6 +134,21 @@ namespace ASBDDS.NET
                     In = ParameterLocation.Header,
                     Description = "APIKey Authorization header using the X-API-Key scheme. \r\n\r\n Enter your API key in the text input below.\r\n\r\nExample: \" 12345abcdef\"",  
                 });
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement  
+                {  
+                    {  
+                        new OpenApiSecurityScheme  
+                        {  
+                            Reference = new OpenApiReference  
+                            {  
+                                Type = ReferenceType.SecurityScheme,  
+                                Id = "X-API-Key"  
+                            }  
+                        },  
+                        new string[] {}  
+  
+                    }  
+                });
             });
             services.AddAutoMapper(
                 typeof(DbConsoleMappings), 
