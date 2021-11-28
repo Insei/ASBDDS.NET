@@ -13,7 +13,9 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using ASBDDS.API.Servers.DHCP;
 using ASBDDS.NET.Handlers;
+using ASBDDS.NET.Interfaces;
 using ASBDDS.NET.MappingProfiles;
+using ASBDDS.NET.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -54,6 +56,7 @@ namespace ASBDDS.NET
             services.AddSingleton(_ => AuthOptions);
             services.AddSingleton(_ => ConsolesManager);
             services.AddScoped<DevicePowerControlManager>();
+            services.AddScoped<IStorageService, StorageService>();
             services.AddAuthentication(option =>
                 {
                     option.DefaultAuthenticateScheme = "smart";
