@@ -10,6 +10,8 @@ namespace ASBDDS.NET.MappingProfiles
         public FileMappings()
         {
             CreateMap<FileInfoModel, FileInfoModelDto>().ReverseMap();
+            CreateMap<SharedFile, SharedFileCreateDto>().ReverseMap();
+            CreateMap<SharedFile, SharedFileDto>().ReverseMap();
         }
     }
 }
