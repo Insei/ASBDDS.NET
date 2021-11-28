@@ -23,5 +23,7 @@ namespace ASBDDS.Shared.Models.Database.DataDb
         public DbSet<DbConsole> Consoles { get; set; }
         public DbSet<SerialPortSettings> SerialPortsSettings { get; set; }
         public DbSet<FileInfoModel> FileInfoModels { get; set; }
+        public DbSet<OperationSystemModel> OperationSystemModels { get; set; }
+        public DbSet<SharedOsFile> SharedOsFiles { get; set; }
     }
 }
