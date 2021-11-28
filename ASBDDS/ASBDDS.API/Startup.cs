@@ -151,6 +151,7 @@ namespace ASBDDS.NET
                 });
             });
             services.AddAutoMapper(
+                typeof(FileMappings),
                 typeof(DbConsoleMappings), 
                 typeof(SerialPortSettingsMappings), 
                 typeof(ConsoleOutputMappings),
