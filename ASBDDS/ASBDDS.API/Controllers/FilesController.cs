@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using ASBDDS.API.Models;
 using ASBDDS.API.Models.Storage;
 using ASBDDS.NET.Interfaces;
 using ASBDDS.Shared.Dtos.File;
@@ -12,6 +12,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace ASBDDS.API.Controllers
@@ -86,15 +87,27 @@ namespace ASBDDS.API.Controllers
 
             return resp;
         }
-        
+
+        /// <summary>
+        /// Delete files
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <returns></returns>
         [HttpDelete]
         [Authorize(Roles = "Admin")]
-        public async Task<ApiResponse> Delete(IList<Guid> fileIds)
+        public async Task<ApiResponse> Delete([FromQuery]IList<Guid> ids)
         {
             var resp = new ApiResponse();
             try
             {
-                var fileInfoModels = await _context.FileInfoModels.Where(f => fileIds.Contains(f.Id)).ToListAsync();
+                var fileInfoModels = await _context.FileInfoModels.Where(f => ids.Contains(f.Id)).ToListAsync();
+                var filesInUse = await _context.SharedOsFiles.Where(f => ids.Contains(f.FileId)).ToListAsync();
+                if (filesInUse.Count > 0)
+                {
+                    resp.Status.Message = "several files are currently in use";
+                    resp.Status.Code = 1;
+                    return resp;
+                }
                 foreach (var fileInfoModel in fileInfoModels)
                 {
                     _storage.Delete(fileInfoModel);
