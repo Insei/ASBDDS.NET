@@ -1,7 +1,7 @@
 ﻿@using ASBDDS.Shared.Dtos.OperationSystem
 @using ASBDDS.Shared.Dtos.File
+@using ASBDDS.Shared.Models.Database.DataDb
 @using ASBDDS.Web.Shared
-@using NuGet.Packaging
 @inject IHttpService _httpClient
 
 <MudDialog  DisableSidePadding="true">
@@ -16,6 +16,25 @@
             <MudItem xs="12">
                 <MudTextField Class="my-2" @bind-Value="@_osUpdateDto.Arch" Label="Arch" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
+            <MudItem xs="12">
+                <MudTextField Class="my-2" @bind-Value="@_osUpdateDto.InstallationBootFile" Label="Installation boot file" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            </MudItem>
+            <MudSelect Class="my-2" @bind-Value="@_osUpdateDto.InstallationProtocol" Label="Installation protocol" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @{
+                    foreach (var bootProtocol in (DeviceBootProtocol[])Enum.GetValues(typeof(DeviceBootProtocol)))
+                    {
+                        <MudSelectItem Value="@bootProtocol"></MudSelectItem>
+                    }
+                }
+            </MudSelect>
+            <MudSelect Class="my-2" @bind-Value="@_osUpdateDto.Protocol" Label="Boot protocol" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @{
+                    foreach (var bootProtocol in (DeviceBootProtocol[])Enum.GetValues(typeof(DeviceBootProtocol)))
+                    {
+                        <MudSelectItem Value="@bootProtocol"></MudSelectItem>
+                    }
+                }
+            </MudSelect>
         </MudContainer>
         <MudDivider />
         <MudPaper>
@@ -73,6 +92,9 @@
             Name = OsDto.Name,
             Version = OsDto.Version,
             Arch = OsDto.Arch,
+            InstallationProtocol = OsDto.InstallationProtocol,
+            Protocol = OsDto.Protocol,
+            InstallationBootFile = OsDto.InstallationBootFile
         };
         await GetSharedOsFiles();
     }
