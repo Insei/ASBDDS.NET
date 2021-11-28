@@ -22,5 +22,6 @@ namespace ASBDDS.Shared.Models.Database.DataDb
         public DbSet<DHCPLeaseDb> DHCPLeases { get; set; }
         public DbSet<DbConsole> Consoles { get; set; }
         public DbSet<SerialPortSettings> SerialPortsSettings { get; set; }
+        public DbSet<FileInfoModel> FileInfoModels { get; set; }
     }
 }
