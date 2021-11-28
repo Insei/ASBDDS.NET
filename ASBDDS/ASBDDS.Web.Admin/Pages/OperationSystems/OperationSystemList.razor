@@ -1,0 +1,111 @@
+﻿@page "/os"
+@using ASBDDS.Shared.Dtos.OperationSystem
+@inject IHttpService _httpClient
+@inject IDialogService _dialogService
+
+<MudTable Items="@_operationsSystems" Dense="@true" Hover="@true" Loading="@_loading" Bordered="@true" Striped="@true" Filter="new Func<OperationSystemDto,bool>(FilterFunc)">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">OS List</MudText>
+        <MudIconButton Class="float-left" Icon="@Icons.Material.Rounded.Add" Color="Color.Success" OnClick="@ShowCreateDialog" aria-label="add"></MudIconButton>
+        <MudText Class="small">Add OS</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Full name</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Arch</MudTh>
+        <MudTh>Version</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Full name">@context.FullName</MudTd>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Arch">@context.Arch</MudTd>
+        <MudTd DataLabel="Version">@context.Version</MudTd>
+        <MudTd Style="white-space: nowrap; width: 1%;" DataLabel="Options">
+            <MudMenu Label="Options" Size="Size.Small" Dense="true" FullWidth="true" Direction="Direction.Start">
+                <MudMenuItem OnClick="@(() => ShowUpdateDialog(context))">Edit</MudMenuItem>
+                <MudMenuItem OnClick="@(() => Delete(context))">Delete</MudMenuItem>
+            </MudMenu>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+<SnackBars @ref="_snackBars"></SnackBars>
+
+@code {
+    private IEnumerable<OperationSystemDto> _operationsSystems = new List<OperationSystemDto>();
+    private bool _loading;
+    private string _searchString = "";
+    private SnackBars _snackBars;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await GetListDataFromServer();
+    }
+
+    private async Task GetListDataFromServer(bool stateHasChanged = false)
+    {
+        _loading = true;
+        await _httpClient.Get<List<OperationSystemDto>>("api/os/",
+            async response => {
+                await Task.Run(() => _operationsSystems = response.Data);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
+        
+        _loading = false;
+        if (stateHasChanged) 
+            StateHasChanged();
+    }
+    
+    private async void ShowCreateDialog()
+    {
+        var dialog = _dialogService.Show<OperationSystemCreateDialog>("Create operation system");
+        var result = await dialog.Result;
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
+    }
+    
+    private async void ShowUpdateDialog(OperationSystemDto os)
+    {
+        var parameters = new DialogParameters { ["OsDto"] = os };
+        var dialogOptions = new DialogOptions() { MaxWidth = MaxWidth.False };
+        var dialog = _dialogService.Show<OperationSystemUpdateDialog>("Edit operation system", parameters, dialogOptions);
+        var result = await dialog.Result;
+        if (result.Cancelled) return;
+        await GetListDataFromServer(true);
+    }
+
+    private async Task Delete(OperationSystemDto os)
+    {
+        await _httpClient.Delete(
+            "api/admin/os/" + os.Id, async _ =>
+            {
+                await GetListDataFromServer(true);
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
+    }
+
+    private bool FilterFunc(OperationSystemDto os)
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+        if (os.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (os.Arch.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (os.Version.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (os.Options.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+    
+}
