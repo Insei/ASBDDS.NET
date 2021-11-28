@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using ASBDDS.Shared.Models.Responses;
 
@@ -23,6 +25,9 @@ namespace ASBDDS.Web.Shared.Interfaces
         Task<ApiResponse> Post(string uri, object value, 
             Func<ApiResponse, Task> successCallback = null,
             Func<ApiResponse, Task> failCallback = null);
+        Task<ApiResponse<T>> Post<T>(string uri, List<FileUploadModel> files,
+            Func<ApiResponse<T>, Task> successCallback = null,
+            Func<ApiResponse<T>, Task> failCallback = null);
         Task<ApiResponse<T>> Put<T>(string uri, object value,
             Func<ApiResponse<T>, Task> successCallback = null,
             Func<ApiResponse<T>, Task> failCallback = null);

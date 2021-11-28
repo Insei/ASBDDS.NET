@@ -1,17 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
-using ASBDDS.Shared.Models.Requests;
 using ASBDDS.Shared.Models.Responses;
+using ASBDDS.Web.Shared;
 using ASBDDS.Web.Shared.Interfaces;
 using ASBDDS.Web.Shared.Providers;
 using Blazored.LocalStorage;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
 namespace ASBDDS.Web.Client.Services
@@ -77,6 +78,36 @@ namespace ASBDDS.Web.Client.Services
             return apiResp;
         }
 
+        public async Task<ApiResponse<T>> Post<T>(string uri, List<FileUploadModel> files, Func<ApiResponse<T>, Task> successCallback = null, Func<ApiResponse<T>, Task> failCallback = null)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, uri);
+            var boundaryDelimiter = $"----{DateTime.Now.Ticks:x}";
+            var httpContent = new MultipartFormDataContent(boundaryDelimiter);
+            if (httpContent.Headers.ContentType != null)
+            {
+                var boundaryParameter = httpContent.Headers.ContentType
+                    .Parameters.Single(p => p.Name == "boundary");
+                if (boundaryParameter.Value != null)
+                    boundaryParameter.Value = boundaryParameter.Value.Replace("\"", "");
+            }
+
+            foreach (var file in files)
+            {
+                var ms = new MemoryStream();
+                await file.Stream.CopyToAsync(ms);
+                ms.Position = 0;
+                var streamContent = new StreamContent(ms);
+                streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                streamContent.Headers.Add("Content-Disposition", "form-data; name=\"files\"; filename=\"" + file.Name +"\"");
+                httpContent.Add(streamContent, "files", file.Name);
+            }
+            httpContent.Headers.ContentLength = (await httpContent.ReadAsStreamAsync()).Length;
+            request.Content = httpContent;
+            var apiResp = await SendRequest<ApiResponse<T>>(request);
+            await RunCallbacks(apiResp, successCallback, failCallback);
+            return apiResp;
+        }
+
         public async Task<ApiResponse<T>> Put<T>(string uri, object value, 
             Func<ApiResponse<T>, Task> successCallback = null,
             Func<ApiResponse<T>, Task> failCallback = null)
@@ -120,7 +151,7 @@ namespace ASBDDS.Web.Client.Services
         }
 
         // helper methods
-        private async Task<int> RunCallbacks(ApiResponse apiResp, Func<ApiResponse, Task> successCallback = null,
+        private async Task RunCallbacks(ApiResponse apiResp, Func<ApiResponse, Task> successCallback = null,
             Func<ApiResponse, Task> failCallback = null)
         {
             if (apiResp.Status.Code == 0 && successCallback != null)
@@ -140,10 +171,9 @@ namespace ASBDDS.Web.Client.Services
             {
                 await failCallback(apiResp);
             }
-            return 0;
         }
         
-        private async Task<int> RunCallbacks<T>(ApiResponse<T> apiResp, Func<ApiResponse<T>, Task> successCallback = null,
+        private async Task RunCallbacks<T>(ApiResponse<T> apiResp, Func<ApiResponse<T>, Task> successCallback = null,
             Func<ApiResponse<T>, Task> failCallback = null)
         {
             if (apiResp.Status.Code == 0 && successCallback != null)
@@ -163,7 +193,6 @@ namespace ASBDDS.Web.Client.Services
             {
                 await failCallback(apiResp);
             }
-            return 0;
         }
 
         private void ProcessApiResponse(ApiResponse apiResp)
