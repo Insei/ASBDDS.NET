@@ -101,7 +101,7 @@ namespace ASBDDS.API.Controllers
             try
             {
                 var fileInfoModels = await _context.FileInfoModels.Where(f => ids.Contains(f.Id)).ToListAsync();
-                var filesInUse = await _context.SharedOsFiles.Where(f => ids.Contains(f.FileId)).ToListAsync();
+                var filesInUse = await _context.SharedBootableImageFiles.Where(f => ids.Contains(f.FileId)).ToListAsync();
                 if (filesInUse.Count > 0)
                 {
                     resp.Status.Message = "several files are currently in use";

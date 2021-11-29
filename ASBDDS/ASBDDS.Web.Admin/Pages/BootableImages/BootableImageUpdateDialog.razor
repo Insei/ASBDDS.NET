@@ -1,0 +1,236 @@
+﻿@using ASBDDS.Shared.Dtos.File
+@using ASBDDS.Shared.Dtos.BootableImage
+@using ASBDDS.Shared.Models.Database.DataDb
+@using ASBDDS.Web.Shared
+@using Microsoft.AspNetCore.Components
+@inject IHttpService _httpClient
+
+<MudDialog  DisableSidePadding="true">
+    <DialogContent>
+        <MudContainer xs="12" Class="mx-auto px-4 justify-center my-4 mud-text-align-center" Style="max-height: 700px; width: 600px; overflow-y: scroll">
+            <MudSelect Class="my-2" @bind-Value="@Type" Label="image type" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @{
+                    foreach (var imageType in (BootableImageType[])Enum.GetValues(typeof(BootableImageType)))
+                    {
+                        <MudSelectItem Value="@imageType"></MudSelectItem>
+                    }
+                }
+            </MudSelect>
+            <MudItem xs="12">
+                <MudTextField Class="my-2" @bind-Value="@Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField Class="my-2" @bind-Value="@Version" Label="Version" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField Class="my-2" @bind-Value="@Arch" Label="Arch" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField ReadOnly="true" Class="my-2" @bind-Value="@_bootableImageUpdateDto.FullName" Label="FullName" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField Class="my-2" @bind-Value="@_bootableImageUpdateDto.BootFile" Label="Boot file name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            </MudItem>
+            <MudSelect Class="my-2" @bind-Value="@_bootableImageUpdateDto.InProtocol" Label="Start/installation protocol" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @{
+                    foreach (var bootProtocol in (DeviceBootProtocol[]) Enum.GetValues(typeof(DeviceBootProtocol)))
+                    {
+                        <MudSelectItem Value="@bootProtocol"></MudSelectItem>
+                    }
+                }
+            </MudSelect>
+            <MudSelect Class="my-2" @bind-Value="@_bootableImageUpdateDto.OutProtocol" Label="After start/installation protocol" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @{
+                    foreach (var bootProtocol in (DeviceBootProtocol[]) Enum.GetValues(typeof(DeviceBootProtocol)))
+                    {
+                        <MudSelectItem Value="@bootProtocol"></MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudContainer>
+        <MudDivider />
+        <MudPaper>
+            <MudText Class="my-2 px-4" Typo="@Typo.h6">Files:</MudText>
+            <MudList>
+            @foreach (var uploadFile in _filesForUpload)
+            {
+                <MudListItem @key="@uploadFile">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Class="ma-n1" OnClick="@(() => _filesForUpload.Remove(_filesForUpload.FirstOrDefault(f => f.Name == uploadFile.Name)))" />
+                    @uploadFile.Name
+                </MudListItem>
+                <MudDivider />
+            }
+            @foreach (var sharedFile in _sharedOsFiles)
+            {
+                <MudListItem @key="@sharedFile">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Class="ma-n1" OnClick="@(() => { _filesForRemove.Add(sharedFile); _sharedOsFiles.Remove(sharedFile);})" />
+                    @sharedFile.File.FullName 
+                </MudListItem>
+                <MudDivider />
+            }
+            </MudList>
+            <MudIconButton HtmlTag="label"
+                           Color="Color.Info"
+                           Icon="@Icons.Material.Filled.Add"
+                           for="fileInput">
+            </MudIconButton>
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Update">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+<SnackBars @ref="_snackBars"></SnackBars>
+<InputFile id="fileInput" OnChange="AddFilesToUpload" hidden multiple />
+@code {
+
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public BootableImageDto BootableImageDto { get; set; } = new BootableImageDto();
+    private List<SharedFileDto> _sharedOsFiles = new List<SharedFileDto>();
+    private readonly List<FileUploadModel> _filesForUpload = new List<FileUploadModel>();
+    private readonly List<SharedFileDto> _filesForRemove = new List<SharedFileDto>();
+    private string Name
+    {
+        get => _bootableImageUpdateDto.Name;
+        set
+        {
+            _bootableImageUpdateDto.Name = value;
+            GenerateFullName();
+        }
+    }
+    private string Version
+    {
+        get => _bootableImageUpdateDto.Version;
+        set
+        {
+            BootableImageDto.Version = value;
+            GenerateFullName();
+        }
+    }
+    
+    private string Arch
+    {
+        get => _bootableImageUpdateDto.Arch;
+        set
+        {
+            _bootableImageUpdateDto.Arch = value;
+            GenerateFullName();
+        }
+    }
+    
+    private BootableImageType Type
+    {
+        get => _bootableImageUpdateDto.Type;
+        set
+        {
+            _bootableImageUpdateDto.Type = value;
+            GenerateFullName();
+        }
+    }
+
+    private BootableImageUpdateDto _bootableImageUpdateDto;
+    private SnackBars _snackBars;
+
+    void Cancel() => MudDialog.Cancel();
+
+    protected override async void OnInitialized()
+    {
+        _bootableImageUpdateDto = new BootableImageUpdateDto
+        {
+            Name = BootableImageDto.Name,
+            Version = BootableImageDto.Version,
+            Arch = BootableImageDto.Arch,
+            InProtocol = BootableImageDto.InProtocol,
+            OutProtocol = BootableImageDto.OutProtocol,
+            BootFile = BootableImageDto.BootFile,
+            Type = BootableImageDto.Type,
+            FullName = BootableImageDto.FullName
+        };
+        await GetSharedFiles();
+    }
+
+    private void GenerateFullName()
+    {
+        _bootableImageUpdateDto.FullName = "";
+        _bootableImageUpdateDto.FullName += _bootableImageUpdateDto.Type;
+        if (!string.IsNullOrEmpty(_bootableImageUpdateDto.Name.Trim()))
+            _bootableImageUpdateDto.FullName += "-" + _bootableImageUpdateDto.Name.Trim();
+        if (!string.IsNullOrEmpty(_bootableImageUpdateDto.Version.Trim()))
+            _bootableImageUpdateDto.FullName += "-" + _bootableImageUpdateDto.Version.Trim();
+        if (!string.IsNullOrEmpty(_bootableImageUpdateDto.Arch.Trim()))
+            _bootableImageUpdateDto.FullName += "-" + _bootableImageUpdateDto.Arch.Trim();
+
+        _bootableImageUpdateDto.FullName = _bootableImageUpdateDto.FullName.ToLower();
+    }
+
+    private async Task GetSharedFiles()
+    {
+        await _httpClient.Get<List<SharedFileDto>>("api/admin/bootable-images/" + BootableImageDto.Id + "/files/", async response =>
+        {
+            await Task.Run(() => _sharedOsFiles = response.Data);
+            StateHasChanged();
+        }, async response =>
+        {
+            await _snackBars.ShowError(response.Status.Message);
+        });
+    }
+
+    private async void Update()
+    {
+        await _httpClient.Put("api/admin/bootable-images/" + BootableImageDto.Id, _bootableImageUpdateDto,
+            async _ =>
+            {
+                await UploadFiles();
+                await RemoveFiles();
+                await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
+            }, async response =>
+            {
+                await _snackBars.ShowError(response.Status.Message);
+            });
+    }
+    private async Task RemoveFiles()
+    {
+        foreach (var sharedOsFile in _filesForRemove)
+        {
+            await _httpClient.Delete("api/admin/bootable-images/" + BootableImageDto.Id + "/files/" + sharedOsFile.Id, async _ =>
+            {
+                await _httpClient.Delete("api/files?ids=" + sharedOsFile.File.Id, null, 
+                    response => throw new Exception(response.Status.Message));
+            }, response => throw new Exception(response.Status.Message));
+        }
+    }
+
+    private async Task UploadFiles()
+    {
+        if (_filesForUpload.Count == 0)
+            return;
+        await _httpClient.Post<List<FileInfoModelDto>>("api/files/", _filesForUpload, async fileUploadResp =>
+        {
+            foreach (var uploadedFile in fileUploadResp.Data)
+            {
+                var sharedFileCreateDto = new SharedFileCreateDto()
+                {
+                    FileId = uploadedFile.Id,
+                };
+                await _httpClient.Post("api/admin/os/" + BootableImageDto.Id + "/files", sharedFileCreateDto, async _ =>
+                {
+                    await GetSharedFiles();
+                }, async response =>
+                {
+                    await _snackBars.ShowError(response.Status.Message);
+                });
+            }
+        }, async response =>
+        {
+            await _snackBars.ShowError(response.Status.Message);
+        });
+        _filesForUpload.Clear();
+    }
+    
+    private void AddFilesToUpload(InputFileChangeEventArgs e)
+    {
+        _filesForUpload.AddRange(e.GetMultipleFiles().ToList().Select(f => new FileUploadModel(){ Name = f.Name, Stream = f.OpenReadStream(419430400)}));
+    }
+}

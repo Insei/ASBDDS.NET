@@ -156,7 +156,7 @@ namespace ASBDDS.NET
                 typeof(SerialPortSettingsMappings), 
                 typeof(ConsoleOutputMappings),
                 typeof(UserApiKeyMappings),
-                typeof(OperationSystemMappings));
+                typeof(BootableImageMappings));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -2,48 +2,48 @@
 
 namespace ASBDDS.Shared.Models.Database.DataDb
 {
-    public class OperationSystemModel : DbBaseModel
+    public class BootableImage : DbBaseModel
     {
         /// <summary>
         /// Disable flag
         /// </summary>
         public bool Disabled { get; set; }
         /// <summary>
-        /// OS Name
+        /// Bootable image name
         /// </summary>
         public string Name { get; set; }
         /// <summary>
-        /// OS Version
+        /// Bootable image version
         /// </summary>
         public string Version { get; set; }
         /// <summary>
-        /// OS Arch
+        /// Bootable image arch
         /// </summary>
         public string Arch { get; set; }
         /// <summary>
-        /// Installation protocol
+        /// OS full name in system
         /// </summary>
-        public DeviceBootProtocol InstallationProtocol { get; set; }
+        public string FullName { get; set; }
+        /// <summary>
+        /// Bootable image start/installation protocol
+        /// </summary>
+        public DeviceBootProtocol InProtocol { get; set; }
         /// <summary>
         /// Boot file
         /// </summary>
-        public string InstallationBootFile { get; set; }
+        public string BootFile { get; set; }
         /// <summary>
-        /// Required boot protocol after installation
+        /// Boot protocol after start/installation
         /// </summary>
-        public DeviceBootProtocol Protocol { get; set; }
-        /// <summary>
-        /// Flag that the operating system is only needed for internal usage
-        /// </summary>
-        public bool OnlyInternalUsage { get; set; }
+        public DeviceBootProtocol OutProtocol { get; set; }
         /// <summary>
         /// Options in JSON format
         /// Objects array { "Name": "OpName", "Value": "OpValue" }
         /// </summary>
         public string Options { get; set; }
         /// <summary>
-        /// OS full name in system
+        /// Bootable image type
         /// </summary>
-        public string GetFullName() => Name + "-" + Version + "-" + Arch;
+        public BootableImageType Type { get; set; }
     }
 }

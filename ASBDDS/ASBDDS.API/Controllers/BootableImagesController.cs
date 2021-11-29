@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ASBDDS.Shared.Dtos.File;
-using ASBDDS.Shared.Dtos.OperationSystem;
+using ASBDDS.Shared.Dtos.BootableImage;
 using ASBDDS.Shared.Models.Database.DataDb;
 using ASBDDS.Shared.Models.Responses;
 using AutoMapper;
@@ -15,30 +15,30 @@ namespace ASBDDS.API.Controllers
 {
     [ApiController]
     [Authorize]
-    public class OperationSystemsController : ControllerBase
+    public class BootableImagesController : ControllerBase
     {
         private readonly DataDbContext _context;
         private readonly IMapper _mapper;
 
-        public OperationSystemsController(DataDbContext context, IMapper mapper)
+        public BootableImagesController(DataDbContext context, IMapper mapper)
         {
             _context = context;
             _mapper = mapper;
         }
         
         /// <summary>
-        /// Get all operation systems
+        /// Get all bootable images
         /// </summary>
         /// <returns></returns>
-        [HttpGet("api/os/")]
-        public async Task<ApiResponse<List<OperationSystemDto>>> GetOperationSystems()
+        [HttpGet("api/admin/bootable-images/")]
+        public async Task<ApiResponse<List<BootableImageDto>>> GetOperationSystems()
         {
-            var resp = new ApiResponse<List<OperationSystemDto>>();
+            var resp = new ApiResponse<List<BootableImageDto>>();
             try
             {
-                resp.Data = await _context.OperationSystemModels.
+                resp.Data = await _context.BootableImages.
                     Where(os => !os.Disabled).
-                    Select(os => _mapper.Map<OperationSystemDto>(os))
+                    Select(os => _mapper.Map<BootableImageDto>(os))
                     .ToListAsync();
             }
             catch(Exception e)
@@ -50,33 +50,35 @@ namespace ASBDDS.API.Controllers
         }
         
         /// <summary>
-        /// Create new operations system
+        /// Create new bootable image
         /// </summary>
-        /// <param name="operationSystemCreateDto"></param>
+        /// <param name="bootableImageCreateDto"></param>
         /// <returns></returns>
         [Authorize(Roles = "Admin")]
-        [HttpPost("api/admin/os/")]
-        public async Task<ApiResponse<OperationSystemDto>> CreateOperationSystem(OperationSystemCreateDto operationSystemCreateDto)
+        [HttpPost("api/admin/bootable-images/")]
+        public async Task<ApiResponse<BootableImageDto>> CreateBootableImage(BootableImageCreateDto bootableImageCreateDto)
         {
-            var resp = new ApiResponse<OperationSystemDto>();
+            var resp = new ApiResponse<BootableImageDto>();
             try
             {
-                var newOs = new OperationSystemModel();
-                _mapper.Map(operationSystemCreateDto, newOs);
-                var alreadyExist = await _context.OperationSystemModels
-                    .AnyAsync(os => 
-                        os.Arch == newOs.Arch && 
-                        os.Name == newOs.Name && 
-                        os.Version == newOs.Version);
+                var newBootableImage = new BootableImage();
+                _mapper.Map(bootableImageCreateDto, newBootableImage);
+                var alreadyExist = await _context.BootableImages
+                    .AnyAsync(bi => 
+                        bi.Arch == newBootableImage.Arch && 
+                        bi.Name == newBootableImage.Name && 
+                        bi.Version == newBootableImage.Version &&
+                        bi.InProtocol == newBootableImage.InProtocol &&
+                        bi.OutProtocol == newBootableImage.OutProtocol);
                 if (alreadyExist)
                 {
                     resp.Status.Code = 1;
-                    resp.Status.Message = "System already exist";
+                    resp.Status.Message = "Bootable image already exist";
                 }
-                _context.OperationSystemModels.Add(newOs);
+                _context.BootableImages.Add(newBootableImage);
                 await _context.SaveChangesAsync();
 
-                resp.Data = _mapper.Map<OperationSystemDto>(newOs);
+                resp.Data = _mapper.Map<BootableImageDto>(newBootableImage);
             }
             catch(Exception e)
             {
@@ -87,26 +89,26 @@ namespace ASBDDS.API.Controllers
         }
         
         /// <summary>
-        /// Update OS
+        /// Update Bootable image
         /// </summary>
         /// <param name="id"></param>
-        /// <param name="osUpdateDto"></param>
+        /// <param name="bootableImageUpdateDto"></param>
         /// <returns></returns>
         [Authorize(Roles = "Admin")]
-        [HttpPut("api/admin/os/{id}")]
-        public async Task<ApiResponse<OperationSystemDto>> UpdateOperationSystem(Guid id, OperationSystemUpdateDto osUpdateDto)
+        [HttpPut("api/admin/bootable-images/{id}")]
+        public async Task<ApiResponse<BootableImageDto>> UpdateBootableImage(Guid id, BootableImageUpdateDto bootableImageUpdateDto)
         {
-            var resp = new ApiResponse<OperationSystemDto>();
+            var resp = new ApiResponse<BootableImageDto>();
             try
             {
-                var os = await _context.OperationSystemModels.FirstOrDefaultAsync(os => os.Id == id);
+                var os = await _context.BootableImages.FirstOrDefaultAsync(os => os.Id == id);
                 if (os == null)
                 {
                     resp.Status.Code = 1;
-                    resp.Status.Message = "Operation system not found";
+                    resp.Status.Message = "Bootable image not found";
                     return resp;
                 }
-                _mapper.Map(osUpdateDto, os);
+                _mapper.Map(bootableImageUpdateDto, os);
                 _context.Entry(os).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
             }
@@ -118,28 +120,28 @@ namespace ASBDDS.API.Controllers
             return resp;
         }
         /// <summary>
-        /// Remove operation system
+        /// Remove bootable image
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [Authorize(Roles = "Admin")]
-        [HttpDelete("api/admin/os/{id}")]
-        public async Task<ApiResponse> DeleteOperationSystem(Guid id)
+        [HttpDelete("api/admin/bootable-images/{id}")]
+        public async Task<ApiResponse> DeleteBootableImage(Guid id)
         {
             var resp = new ApiResponse();
             try
             {
-                var os = await _context.OperationSystemModels.FirstOrDefaultAsync(os => os.Id == id);
-                if (os == null)
+                var bi = await _context.BootableImages.FirstOrDefaultAsync(os => os.Id == id);
+                if (bi == null)
                 {
                     resp.Status.Code = 1;
-                    resp.Status.Message = "Operation system not found";
+                    resp.Status.Message = "Bootable image not found";
                     return resp;
                 }
-                var sharedOsFiles = await _context.SharedOsFiles.Where(f => f.Os == os).ToListAsync();
-                _context.SharedOsFiles.RemoveRange(sharedOsFiles);
-                os.Disabled = true;
-                _context.Entry(os).State = EntityState.Modified;
+                var sharedOsFiles = await _context.SharedBootableImageFiles.Where(f => f.BootableImage == bi).ToListAsync();
+                _context.SharedBootableImageFiles.RemoveRange(sharedOsFiles);
+                bi.Disabled = true;
+                _context.Entry(bi).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
             }
             catch(Exception e)
@@ -151,25 +153,25 @@ namespace ASBDDS.API.Controllers
         }
         
         /// <summary>
-        /// Get operation system files
+        /// Get bootable image files
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [Authorize(Roles = "Admin")]
-        [HttpGet("api/admin/os/{id}/files/")]
-        public async Task<ApiResponse<List<SharedFileDto>>> GetOperationSystemFiles(Guid id)
+        [HttpGet("api/admin/bootable-images/{id}/files/")]
+        public async Task<ApiResponse<List<SharedFileDto>>> GetBootableImageFiles(Guid id)
         {
             var resp = new ApiResponse<List<SharedFileDto>>();
             try
             {
-                var os = await _context.OperationSystemModels.FirstOrDefaultAsync(os => os.Id == id && !os.Disabled);
-                if (os == null)
+                var bi = await _context.BootableImages.FirstOrDefaultAsync(os => os.Id == id && !os.Disabled);
+                if (bi == null)
                 {
                     resp.Status.Code = 1;
-                    resp.Status.Message = "Operation system not found";
+                    resp.Status.Message = "Bootable image not found";
                 }
                 
-                var sharedOsFiles = await _context.SharedOsFiles.Where(f => f.Os == os).ToListAsync();
+                var sharedOsFiles = await _context.SharedBootableImageFiles.Where(f => f.BootableImage == bi).ToListAsync();
                 var filesIds = sharedOsFiles.Select(f => f.FileId);
                 var fileInfoModels = await _context.FileInfoModels.Where(f => filesIds.Contains(f.Id)).ToListAsync();
                 resp.Data = fileInfoModels.Select(f => new SharedFileDto()
@@ -189,7 +191,7 @@ namespace ASBDDS.API.Controllers
         }
         
         /// <summary>
-        /// Add Operation system file
+        /// Add bootable image file
         /// </summary>
         /// <param name="id"></param>
         /// <param name="fileToShareModel"></param>
@@ -201,11 +203,11 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse();
             try
             {
-                var os = await _context.OperationSystemModels.FirstOrDefaultAsync(os => os.Id == id && !os.Disabled);
-                if (os == null)
+                var bi = await _context.BootableImages.FirstOrDefaultAsync(os => os.Id == id && !os.Disabled);
+                if (bi == null)
                 {
                     resp.Status.Code = 1;
-                    resp.Status.Message = "Operation system not found";
+                    resp.Status.Message = "Bootable image not found";
                     return resp;
                 }
                 var fileInfoModel = await _context.FileInfoModels.FirstOrDefaultAsync(f => f.Id == fileToShareModel.FileId);
@@ -215,7 +217,8 @@ namespace ASBDDS.API.Controllers
                     resp.Status.Message = "File not found";
                     return resp;
                 }
-                var fileAlreadyShared = await _context.SharedOsFiles.AnyAsync(f => f.Id == fileToShareModel.FileId && f.Os == os);
+                var fileAlreadyShared = await _context.SharedBootableImageFiles.AnyAsync(f => f.Id == fileToShareModel.FileId && 
+                    f.BootableImage == bi);
                 if (fileAlreadyShared)
                 {
                     resp.Status.Code = 1;
@@ -223,10 +226,10 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
                 
-                var newSharedOsFile = new SharedOsFile();
+                var newSharedOsFile = new SharedBootableImageFile();
                 _mapper.Map(fileToShareModel, newSharedOsFile);
-                newSharedOsFile.Os = os;
-                _context.SharedOsFiles.Add(newSharedOsFile);
+                newSharedOsFile.BootableImage = bi;
+                _context.SharedBootableImageFiles.Add(newSharedOsFile);
                 await _context.SaveChangesAsync();
             }
             catch(Exception e)
@@ -238,33 +241,33 @@ namespace ASBDDS.API.Controllers
         }
         
         /// <summary>
-        /// Remove operation system file
+        /// Remove bootable image file
         /// </summary>
         /// <param name="id"></param>
         /// <param name="sharedFileId"></param>
         /// <returns></returns>
         [Authorize(Roles = "Admin")]
-        [HttpDelete("api/admin/os/{id}/files/{sharedFileId}")]
+        [HttpDelete("api/admin/bootable-images/{id}/files/{sharedFileId}")]
         public async Task<ApiResponse> DeleteOperationSystemFile(Guid id, Guid sharedFileId)
         {
             var resp = new ApiResponse();
             try
             {
-                var os = await _context.OperationSystemModels.FirstOrDefaultAsync(os => os.Id == id && !os.Disabled);
-                if (os == null)
+                var bi = await _context.BootableImages.FirstOrDefaultAsync(os => os.Id == id && !os.Disabled);
+                if (bi == null)
                 {
                     resp.Status.Code = 1;
-                    resp.Status.Message = "Operation system not found";
+                    resp.Status.Message = "Bootable image not found";
                     return resp;
                 }
-                var sharedOsFile = await _context.SharedOsFiles.FirstOrDefaultAsync(f => f.Id == sharedFileId);
+                var sharedOsFile = await _context.SharedBootableImageFiles.FirstOrDefaultAsync(f => f.Id == sharedFileId);
                 if (sharedOsFile == null)
                 {
                     resp.Status.Code = 1;
                     resp.Status.Message = "File not found";
                     return resp;
                 }
-                _context.SharedOsFiles.Remove(sharedOsFile);
+                _context.SharedBootableImageFiles.Remove(sharedOsFile);
                 await _context.SaveChangesAsync();
             }
             catch(Exception e)

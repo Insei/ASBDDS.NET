@@ -1,19 +1,19 @@
-﻿@using ASBDDS.Shared.Dtos.OperationSystem
-@using ASBDDS.Shared.Models.Requests
-@using ASBDDS.Shared.Models.Responses
+﻿@using ASBDDS.Shared.Models.Responses
+@using Microsoft.AspNetCore.Components
+@using ASBDDS.Shared.Dtos.BootableImage
 @inject IHttpService _httpClient
 
 <MudDialog  DisableSidePadding="true">
     <DialogContent>
         <MudContainer xs="12" Class="mx-auto px-4 justify-center my-4 mud-text-align-center" Style="max-height: 700px; width: 600px; overflow-y: scroll">
             <MudItem xs="12">
-                <MudTextField Pattern="/[a-z]/" Class="my-2" @bind-Value="@_osCreateDto.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+                <MudTextField Pattern="/[a-z]/" Class="my-2" @bind-Value="@_bootableImageCreateDto.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
             <MudItem xs="12">
-                <MudTextField Pattern="/[a-z]/"  Class="my-2" @bind-Value="@_osCreateDto.Version" Label="Version" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+                <MudTextField Pattern="/[a-z]/"  Class="my-2" @bind-Value="@_bootableImageCreateDto.Version" Label="Version" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
             <MudItem xs="12">
-                <MudTextField Pattern="/[a-z]/" Class="my-2" @bind-Value="@_osCreateDto.Arch" Label="Arch" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+                <MudTextField Pattern="/[a-z]/" Class="my-2" @bind-Value="@_bootableImageCreateDto.Arch" Label="Arch" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
             </MudItem>
         </MudContainer>
     </DialogContent>
@@ -27,14 +27,14 @@
 
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
-    private readonly OperationSystemCreateDto _osCreateDto = new OperationSystemCreateDto();
+    private readonly BootableImageCreateDto _bootableImageCreateDto = new BootableImageCreateDto();
     private SnackBars _snackBars;
 
     void Cancel() => MudDialog.Cancel();
 
     private async void Create()
     {
-        await _httpClient.Post<ApiResponse<OperationSystemDto>>("api/admin/os/", _osCreateDto,
+        await _httpClient.Post<ApiResponse<BootableImageDto>>("api/admin/bootable-images/", _bootableImageCreateDto,
             async _ =>
             {
                 await Task.Run(() => MudDialog.Close(DialogResult.Ok(true)));
