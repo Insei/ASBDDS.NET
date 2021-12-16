@@ -196,8 +196,12 @@ namespace ASBDDS.API.Controllers
                 }
                 
                 var devicesIdInRents = await _context.DeviceRents.Where(r => r.Closed == null).Select(r => r.Device.Id).ToListAsync();
+                var deviceModel = devRentReq.Model.Trim().Replace("_", " ");
+                var deviceManufacturer = devRentReq.Manufacturer.Trim().Replace("_", " ");
                 var freeDevice = await _context.Devices
-                    .FirstOrDefaultAsync(d => !devicesIdInRents.Contains(d.Id) && d.Manufacturer == devRentReq.Manufacturer && d.Model == devRentReq.Model);
+                    .FirstOrDefaultAsync(d => !devicesIdInRents.Contains(d.Id)
+                                              && d.Manufacturer.Equals(deviceManufacturer, StringComparison.OrdinalIgnoreCase)
+                                              && d.Model.Equals(deviceModel, StringComparison.OrdinalIgnoreCase));
                 // TODO: advanced reasons if device can't be available for this request.
                 // example: we have not device with selected model in pool. 
                 if (freeDevice == null)
