@@ -166,6 +166,9 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<DeviceRentUserResponse>();
             try
             {
+                var deviceModel = devRentReq.Model.Trim().Replace("_", " ");
+                var deviceManufacturer = devRentReq.Manufacturer.Trim().Replace("_", " ");
+                
                 var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(HttpContext.User.Identity.Name));
                 var project = await _context.Projects.Include(p => p.ProjectDeviceLimits).FirstOrDefaultAsync(p => p.Id == projectId);
                 if (project == null)
@@ -175,8 +178,9 @@ namespace ASBDDS.API.Controllers
                     return resp;
                 }
                 
-                var limit = project.ProjectDeviceLimits.FirstOrDefault(l =>
-                    l.Model == devRentReq.Model && l.Manufacturer == devRentReq.Manufacturer);
+                var limit = project.ProjectDeviceLimits.ToList().FirstOrDefault(l =>
+                    l.Model.Equals(deviceModel, StringComparison.OrdinalIgnoreCase) 
+                    && l.Manufacturer.Equals(deviceManufacturer, StringComparison.OrdinalIgnoreCase));
                 if (limit == null)
                 {
                     resp.Status.Code = 1;
@@ -185,9 +189,9 @@ namespace ASBDDS.API.Controllers
                 }
 
                 var countInRentByProjectAndWithSelectedModel = _context.DeviceRents.Include(dr => dr.Device)
-                    .Count(dr => dr.Status == DeviceRentStatus.ACTIVE
-                                 && dr.Device.Manufacturer == devRentReq.Manufacturer
-                                 && dr.Device.Model == devRentReq.Model);
+                    .Where(dr => dr.Status == DeviceRentStatus.ACTIVE).ToList().Count(dr =>
+                            dr.Device.Manufacturer.Equals(deviceManufacturer, StringComparison.OrdinalIgnoreCase)
+                            && dr.Device.Model.Equals(deviceModel, StringComparison.OrdinalIgnoreCase));
                 if (limit.Count <= countInRentByProjectAndWithSelectedModel)
                 {
                     resp.Status.Code = 1;
@@ -196,10 +200,8 @@ namespace ASBDDS.API.Controllers
                 }
                 
                 var devicesIdInRents = await _context.DeviceRents.Where(r => r.Closed == null).Select(r => r.Device.Id).ToListAsync();
-                var deviceModel = devRentReq.Model.Trim().Replace("_", " ");
-                var deviceManufacturer = devRentReq.Manufacturer.Trim().Replace("_", " ");
-                var freeDevice = await _context.Devices
-                    .FirstOrDefaultAsync(d => !devicesIdInRents.Contains(d.Id)
+                var freeDevice = _context.Devices.ToList()
+                    .FirstOrDefault(d => !devicesIdInRents.Contains(d.Id)
                                               && d.Manufacturer.Equals(deviceManufacturer, StringComparison.OrdinalIgnoreCase)
                                               && d.Model.Equals(deviceModel, StringComparison.OrdinalIgnoreCase));
                 // TODO: advanced reasons if device can't be available for this request.
