@@ -25,5 +25,6 @@ namespace ASBDDS.Shared.Models.Database.DataDb
         public DbSet<FileInfoModel> FileInfoModels { get; set; }
         public DbSet<OperationSystemModel> OperationSystemModels { get; set; }
         public DbSet<SharedOsFile> SharedOsFiles { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
     }
 }

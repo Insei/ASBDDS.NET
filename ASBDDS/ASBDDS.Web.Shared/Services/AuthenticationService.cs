@@ -47,7 +47,7 @@ namespace ASBDDS.Web.Client.Services
             var expiredToken = await _localStorageService.GetItemAsync<TokenResponse>("TokenResponse");
 
 
-            if (expiredToken?.RefreshToken == null || expiredToken.AccessToken == null)
+            if (expiredToken.AccessToken == null)
             {
                 await ResetTokenDataAsync();
                 (_authenticationStateProvider as ApiAuthenticationStateProvider)?.Notify();
@@ -56,8 +56,7 @@ namespace ASBDDS.Web.Client.Services
             
             var tokenRefreshRequest = new TokenRefreshRequest
             {
-                AccessToken = expiredToken.AccessToken,
-                RefreshToken = expiredToken.RefreshToken
+                AccessToken = expiredToken.AccessToken
             };
 
             var json = JsonConvert.SerializeObject(tokenRefreshRequest);

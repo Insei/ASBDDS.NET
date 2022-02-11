@@ -237,18 +237,18 @@ namespace ASBDDS.API.Controllers
             var resp = new ApiResponse<TokenResponse>();
             try
             {
-                var dbuser = await _userManager.FindByNameAsync(request.UserName);
-                if (dbuser == null)
+                var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(request.UserName));
+                if (user == null)
                 {
                     resp.Status.Code = 1;
                     resp.Status.Message = "user not found";
                     return resp;
                 }
 
-                var result = await _signInManager.CheckPasswordSignInAsync(dbuser, request.Password, false);
+                var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
                 if (result.Succeeded)
                 {
-                    var userClaims = await GetClaimsIdentity(dbuser);
+                    var userClaims = await GetClaimsIdentity(user);
                     var now = DateTime.UtcNow;
                     var expires = now.Add(TimeSpan.FromMinutes(_authOptions.Lifetime));
                     // создаем JWT-токен
@@ -261,16 +261,23 @@ namespace ASBDDS.API.Controllers
                         signingCredentials: new SigningCredentials(_authOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
                     var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
 
-                    dbuser.RefreshToken = GenerateRefreshToken();
-                    _context.Entry(dbuser).State = EntityState.Modified;
+                    var newRefreshToken = GenerateRefreshToken();
+                    RefreshToken refreshToken = new RefreshToken
+                    {
+                        User = user,
+                        Token = encodedJwt,
+                        RefreshT = newRefreshToken,
+                        ExpireDate = now.Add(TimeSpan.FromMinutes(43200))
+                    };
+
+                    await _context.RefreshTokens.AddAsync(refreshToken);
                     await _context.SaveChangesAsync();
 
                     resp.Data = new TokenResponse()
                     {
                         AccessToken = encodedJwt,
                         UserName = userClaims.Name,
-                        Expires = jwt.ValidTo,
-                        RefreshToken = dbuser.RefreshToken
+                        Expires = jwt.ValidTo
                     };
                 }
             }
@@ -293,16 +300,27 @@ namespace ASBDDS.API.Controllers
                 var username = principal?.Identity?.Name;
                 if (!string.IsNullOrEmpty(username))
                 {
-                    var dbUser = await _userManager.FindByNameAsync(username);
+                    var user = _context.Users.FirstOrDefault(u => u.UserName.Equals(username));
+                    var dbRefreshToken = await _context.RefreshTokens.Where(t => t.Token == request.AccessToken).FirstOrDefaultAsync();
 
-                    if (dbUser.RefreshToken != request.RefreshToken)
+                    if (dbRefreshToken == null)
                     {
                         resp.Status.Code = 1;
                         resp.Status.Message = "refresh token is not valid.";
+                        return resp;
                     }
                     
-                    var userClaims = await GetClaimsIdentity(dbUser);
                     var now = DateTime.UtcNow;
+                    if (now > dbRefreshToken.ExpireDate)
+                    {
+                        resp.Status.Code = 1;
+                        resp.Status.Message = "refresh token is expired.";
+                        return resp;
+                    }
+
+                    _context.RefreshTokens.Remove(dbRefreshToken);
+
+                    var userClaims = await GetClaimsIdentity(user);
                     var expires = now.Add(TimeSpan.FromMinutes(_authOptions.Lifetime));
 
                     var jwt = new JwtSecurityToken(
@@ -313,17 +331,24 @@ namespace ASBDDS.API.Controllers
                         expires: expires,
                         signingCredentials: new SigningCredentials(_authOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
                     var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
-                    
-                    dbUser.RefreshToken = GenerateRefreshToken();
-                    _context.Entry(dbUser).State = EntityState.Modified;
+
+                    var newRefreshToken = GenerateRefreshToken();
+                    RefreshToken refreshToken = new RefreshToken
+                    {
+                        User = user,
+                        Token = encodedJwt,
+                        RefreshT = newRefreshToken,
+                        ExpireDate = now.Add(TimeSpan.FromMinutes(43200))
+                    };
+
+                    await _context.RefreshTokens.AddAsync(refreshToken);
                     await _context.SaveChangesAsync();
 
                     resp.Data = new TokenResponse()
                     {
                         AccessToken = encodedJwt,
                         UserName = userClaims.Name,
-                        Expires = jwt.ValidTo,
-                        RefreshToken = dbUser.RefreshToken
+                        Expires = jwt.ValidTo
                     };
                 }
             }
